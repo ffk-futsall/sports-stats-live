@@ -9,8 +9,8 @@ export default async function handler(req,res) {
   try {
     if (req.method === 'GET') {
       const [delegates, assignments] = await Promise.all([
-        supabase.from('protocol_delegates').select('id,username,first_name,last_name,city,active,must_change_password,created_at').order('created_at',{ascending:false}),
-        supabase.from('protocol_assignments').select('id,delegate_id,portal_match_id,match_details,state,rejection_reason,responded_at,published,updated_at,created_at').order('created_at',{ascending:false})
+        supabase.from('protocol_delegates').select('id,username,first_name,last_name,city,active,must_change_password,created_at').eq('active',true).order('created_at',{ascending:false}),
+        supabase.from('protocol_assignments').select('id,delegate_id,portal_match_id,match_details,state,rejection_reason,responded_at,published,publication_blocked,updated_at,created_at').is('archived_at',null).order('created_at',{ascending:false})
       ]);
       if (delegates.error || assignments.error) throw new Error('database');
       return res.status(200).json({delegates:delegates.data,assignments:assignments.data});
@@ -50,6 +50,38 @@ export default async function handler(req,res) {
       if (insertError?.code==='23505') return error(res,409,'Kjo ndeshje ka tashmë një caktim aktiv ose i është caktuar më parë këtij delegati.');
       if (insertError) throw insertError;
       return res.status(201).json({assignment});
+    }
+    if (body.action === 'edit-delegate') {
+      const id=clean(body.delegateId), first_name=clean(body.firstName), last_name=clean(body.lastName), city=clean(body.city);
+      if(!first_name||!last_name||!city)return error(res,400,'Plotësoni emrin, mbiemrin dhe qytetin.');
+      const {data,error:e}=await supabase.from('protocol_delegates').update({first_name,last_name,city}).eq('id',id).eq('active',true).select('id').maybeSingle();
+      if(e)throw e;if(!data)return error(res,404,'Delegati nuk u gjet.');return res.status(200).json({ok:true});
+    }
+    if (body.action === 'remove-delegate') {
+      const {data,error:e}=await supabase.rpc('protocol_deactivate_delegate',{p_delegate_id:clean(body.delegateId)});
+      if(e?.code==='P0001')return error(res,409,'Së pari ndryshoni delegatin ose largoni caktimet e tij.');
+      if(e)throw e;if(!data)return error(res,404,'Delegati nuk u gjet.');return res.status(200).json({ok:true});
+    }
+    if (body.action === 'archive-assignment') {
+      const {data,error:e}=await supabase.from('protocol_assignments').update({archived_at:new Date().toISOString(),published:false,updated_at:new Date().toISOString()}).eq('id',clean(body.assignmentId)).is('archived_at',null).select('id').maybeSingle();
+      if(e)throw e;if(!data)return error(res,404,'Caktimi nuk u gjet.');return res.status(200).json({ok:true});
+    }
+    if (body.action === 'publication') {
+      if(typeof body.blocked!=='boolean')return error(res,400,'Veprimi është i pavlefshëm.');
+      const change={publication_blocked:body.blocked,updated_at:new Date().toISOString()};if(body.blocked)change.published=false;
+      const {data,error:e}=await supabase.from('protocol_assignments').update(change).eq('id',clean(body.assignmentId)).is('archived_at',null).select('id').maybeSingle();
+      if(e)throw e;if(!data)return error(res,404,'Caktimi nuk u gjet.');return res.status(200).json({ok:true});
+    }
+    if (body.action === 'reassign') {
+      const id=clean(body.assignmentId),delegateId=clean(body.delegateId);
+      const [{data:current,error:e},{data:delegate,error:de}]=await Promise.all([
+        supabase.from('protocol_assignments').select('id,delegate_id,draft_version').eq('id',id).is('archived_at',null).maybeSingle(),
+        supabase.from('protocol_delegates').select('id,active').eq('id',delegateId).maybeSingle()]);
+      if(e||de)throw e||de;if(!current)return error(res,404,'Caktimi nuk u gjet.');
+      if(!delegate?.active||delegate.id===current.delegate_id)return error(res,400,'Zgjidhni një delegat tjetër aktiv.');
+      const {data,error:ue}=await supabase.from('protocol_assignments').update({delegate_id:delegate.id,state:'pending',rejection_reason:null,responded_at:null,published:false,draft_version:current.draft_version+1,updated_at:new Date().toISOString()}).eq('id',id).eq('delegate_id',current.delegate_id).eq('draft_version',current.draft_version).is('archived_at',null).select('id').maybeSingle();
+      if(ue?.code==='23505')return error(res,409,'Kjo ndeshje ka një caktim tjetër aktiv.');if(ue)throw ue;
+      if(!data)return error(res,409,'Caktimi ndryshoi ndërkohë. Rifreskoni dhe provoni përsëri.');return res.status(200).json({ok:true});
     }
     return error(res,400,'Veprim i panjohur');
   } catch {return error(res,503,'Shërbimi i delegatëve është përkohësisht i padisponueshëm.');}
