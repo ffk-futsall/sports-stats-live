@@ -22,6 +22,7 @@ import AdminPlayoff from './admin/AdminPlayoff';
 import AdminNormativeActs from './admin/AdminNormativeActs';
 import AdminShorti from './admin/AdminShorti';
 import AdminDocuments from './admin/AdminDocuments';
+import AdminProtocolDelegates from './admin/AdminProtocolDelegates';
 const AdminPage: React.FC = () => {
   const { isAuthenticated, isAdmin, isEditor, currentUser, loading } = useAuth();
   const navigate = useNavigate();
@@ -71,6 +72,7 @@ const AdminPage: React.FC = () => {
     { key: 'teams', label: 'Skuadrat', icon: null, editorAccess: false },
     { key: 'players', label: 'Lojtarët', icon: null, editorAccess: false },
     { key: 'matches', label: 'Ndeshjet', icon: null, editorAccess: false },
+    { key: 'protocolDelegates', label: 'Delegatët Procesverbali', icon: null, editorAccess: false },
     { key: 'scorers', label: 'Golashënuesit', icon: null, editorAccess: false },
     { key: 'pow', label: 'Lojtari Javës', icon: null, editorAccess: false },
     { key: 'settings', label: 'Cilësimet', icon: null, editorAccess: false },
@@ -256,6 +258,7 @@ const AdminPage: React.FC = () => {
         {activeTab === 'teams' && isAdmin && <AdminTeams />}
         {activeTab === 'players' && isAdmin && <AdminPlayers />}
         {activeTab === 'matches' && <AdminMatches />}
+        {activeTab === 'protocolDelegates' && isAdmin && <AdminProtocolDelegates />}
         {activeTab === 'scorers' && isAdmin && <AdminScorers />}
         {activeTab === 'pow' && isAdmin && <AdminPlayerOfWeek />}
         {activeTab === 'settings' && isAdmin && <AdminSettings />}
