@@ -25,10 +25,29 @@ const LandingMatches: React.FC<LandingMatchesProps> = ({ initialTab = 'upcoming'
   const [protocolMatches,setProtocolMatches] = useState<ProtocolMatch[]>([]);
   const [protocolError,setProtocolError] = useState(false);
   useEffect(() => {
-    let active=true;
-    const load=()=>fetch('/api/protocol-live',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error();return r.json()}).then(d=>{if(active){setProtocolMatches(Array.isArray(d.matches)?d.matches:[]);setProtocolError(false)}}).catch(()=>{if(active)setProtocolError(true)});
-    load();const timer=setInterval(load,10000);return()=>{active=false;clearInterval(timer)};
-  },[]);
+    let active=true, inFlight=false, failures=0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let controller: AbortController | undefined;
+    const schedule=(ms:number)=>{clearTimeout(timer);timer=setTimeout(load,ms)};
+    const load=async()=>{
+      if(!active || document.hidden || inFlight)return;
+      inFlight=true;controller=new AbortController();
+      try {
+        const response=await fetch('/api/protocol-live',{signal:controller.signal});
+        if(!response.ok)throw new Error('Live unavailable');
+        const data=await response.json();
+        if(active){setProtocolMatches(Array.isArray(data.matches)?data.matches:[]);setProtocolError(false);failures=0}
+      } catch(e) {
+        if(active && (e as Error).name!=='AbortError'){setProtocolError(true);failures++}
+      } finally {
+        inFlight=false;
+        if(active&&!document.hidden)schedule(failures?Math.min(60000,10000*2**Math.min(failures,3)):activeTab==='live'?10000:60000);
+      }
+    };
+    const visibility=()=>{clearTimeout(timer);if(document.hidden)controller?.abort();else load()};
+    document.addEventListener('visibilitychange',visibility);load();
+    return()=>{active=false;clearTimeout(timer);controller?.abort();document.removeEventListener('visibilitychange',visibility)};
+  },[activeTab]);
   const publishedIds = useMemo(()=>new Set(protocolMatches.map(m=>m.portalMatchId)),[protocolMatches]);
 
   const seasonMatches = useMemo(() =>
