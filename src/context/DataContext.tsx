@@ -313,7 +313,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         goals: data.goals,
         scorers: data.scorers,
         playersOfWeek: data.playersOfWeek,
-        users: data.users.length > 0 ? [...data.users.filter((u: any) => u.username !== 'urimi1806'), { id: 'admin-main', username: 'urimi1806', password: '180610', role: 'admin' }] : [{ id: 'admin-main', username: 'urimi1806', password: '180610', role: 'admin' }],
+        users: [], // Authentication is managed by Supabase Auth, not public app data.
         decisions: data.decisions || [],
         normativeActs: (normativeActsData || []) as NormativeAct[],
         videos: (videosData || []) as Video[],
