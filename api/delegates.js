@@ -19,12 +19,19 @@ export default async function handler(req,res) {
     const body=req.body || {};
     if (body.action === 'create') {
       const username=clean(body.username,40).toLowerCase(), firstName=clean(body.firstName), lastName=clean(body.lastName), city=clean(body.city), password=body.password;
-      if (!/^[a-z0-9][a-z0-9_-]{2,39}$/.test(username) || !firstName || !lastName || !city || typeof password !== 'string' || password.length<12 || password.length>128) return error(res,400,'Plotësoni të gjitha fushat; fjalëkalimi duhet të ketë 12–128 karaktere.');
+      if (!firstName || !lastName || !city) return error(res,400,'Plotësoni emrin, mbiemrin dhe qytetin.');
+      if (!/^[a-z0-9][a-z0-9_-]{2,39}$/.test(username)) return error(res,400,'Emri i përdoruesit duhet të ketë 3–40 karaktere: shkronja pa thekse, numra, _ ose -.');
+      if (typeof password !== 'string' || password.length<6 || password.length>128) return error(res,400,'Fjalëkalimi duhet të ketë 6–128 karaktere.');
       const {data:existing,error:lookupError}=await supabase.from('protocol_delegates').select('id').eq('username',username).maybeSingle();
       if (lookupError) throw lookupError;
       if (existing) return error(res,409,'Ky emër përdoruesi ekziston.');
       const {data:created,error:authError}=await supabase.auth.admin.createUser({email:`urim.ffkfutsall+delegat-${username}@gmail.com`,password,email_confirm:true});
-      if (authError || !created?.user) return error(res,409,'Llogaria nuk u krijua. Kontrolloni emrin e përdoruesit.');
+      if (authError || !created?.user) {
+        if (authError?.code === 'weak_password') return error(res,400,'Supabase e refuzoi fjalëkalimin sipas rregullave të projektit. Kontrolloni konfigurimin e sigurisë së fjalëkalimit.');
+        if (authError?.code === 'email_exists' || authError?.code === 'user_already_exists') return error(res,409,'Ky emër përdoruesi është tashmë i zënë.');
+        console.error('Delegate auth creation failed', {code:authError?.code || 'unknown', status:authError?.status || null});
+        return error(res,503,'Llogaria nuk u krijua për shkak të një gabimi të shërbimit të kyçjes.');
+      }
       const {data:delegate,error:insertError}=await supabase.from('protocol_delegates').insert({user_id:created.user.id,username,first_name:firstName,last_name:lastName,city}).select('id,username,first_name,last_name,city,active,must_change_password,created_at').single();
       if (insertError) { await supabase.auth.admin.deleteUser(created.user.id); throw insertError; }
       return res.status(201).json({delegate});

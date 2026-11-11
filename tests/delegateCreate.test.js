@@ -1,0 +1,11 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';
+process.env.SUPABASE_URL='https://example.invalid';process.env.SUPABASE_SERVICE_KEY='fake';
+const {supabase}=await import('../api/_supabaseClient.js');const {default:handler}=await import('../api/delegates.js');
+let captured;
+supabase.auth.getUser=async()=>({data:{user:{id:'admin',email_confirmed_at:'yes'}}});
+supabase.auth.admin.createUser=async(v)=>{captured=v;return {data:{user:{id:'new-user'}},error:null}};
+supabase.from=table=>{const q={select(){return this},eq(){return this},insert(){return this},async maybeSingle(){return {data:table==='admin_accounts'?{user_id:'admin'}:null,error:null}},async single(){return {data:{id:'delegate'},error:null}}};return q};
+const res=()=>({statusCode:200,setHeader(){return this},status(n){this.statusCode=n;return this},json(v){this.body=v;return this}});
+const req=(password,username='test-user')=>({method:'POST',headers:{authorization:'Bearer token'},body:{action:'create',firstName:'Test',lastName:'Delegate',city:'Test',username,password}});
+test('delegate creation permits arbitrary passwords of at least six characters',async()=>{let r=res();await handler(req('12345'),r);assert.equal(r.statusCode,400);for(const value of ['123456','abcdef','!!--__']){r=res();await handler(req(value),r);assert.equal(r.statusCode,201);assert.equal(captured.password,value);assert.ok(captured.email.includes('+delegat-test-user@'))}});
+test('invalid username returns a meaningful error',async()=>{let r=res();await handler(req('123456','bad name'),r);assert.equal(r.statusCode,400);assert.match(r.body.error,/Emri i përdoruesit/)});

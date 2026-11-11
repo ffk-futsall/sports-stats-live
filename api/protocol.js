@@ -30,7 +30,7 @@ export default async function handler(req,res) {
     const body=req.body||{};
     if (req.method==='POST' && body.action==='change-password') {
       const password=body.password;
-      if(typeof password!=='string'||password.length<12||password.length>128)return err(res,400,'Fjalëkalimi duhet të ketë 12–128 karaktere.');
+      if(typeof password!=='string'||password.length<6||password.length>128)return err(res,400,'Fjalëkalimi duhet të ketë 6–128 karaktere.');
       const {error:changeError}=await supabase.auth.admin.updateUserById(actor.user.id,{password});
       if(changeError) return err(res,400,'Fjalëkalimi nuk u ndryshua.');
       const {error:flagError}=await supabase.from('protocol_delegates').update({must_change_password:false}).eq('id',actor.delegate.id);
