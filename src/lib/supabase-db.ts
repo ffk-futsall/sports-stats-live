@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // Klient i të dhënave — MongoDB Atlas (nëpërmjet /api/data, /api/visitors,
 // /api/notifications si funksione Vercel Serverless).
 // ------------------------------------------------------------
@@ -12,6 +12,7 @@
 // Emrat e eksportuar janë njësoj si më parë, që asnjë skedar tjetër
 // (DataContext, faqet admin) të mos ketë nevojë të ndryshojë import-et.
 // ============================================================
+import { supabaseClient } from './supabaseClient';
 import {
   Season, Competition, Team, Player, Match, Goal, Scorer, PlayerOfWeek,
   User, AppSettings, Decision, ShortiRubrik,
@@ -19,8 +20,13 @@ import {
 
 const API_BASE: string = (import.meta as any).env?.VITE_API_BASE || '/api';
 
+async function authHeaders(): Promise<Record<string, string>> {
+  const { data } = await supabaseClient.auth.getSession();
+  return data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {};
+}
+
 async function apiGet(path: string) {
-  const res = await fetch(`${API_BASE}${path}`);
+  const res = await fetch(`${API_BASE}${path}`, { headers: await authHeaders() });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || `GET ${path} dështoi (${res.status})`);
@@ -31,7 +37,7 @@ async function apiGet(path: string) {
 async function apiSend(method: 'POST' | 'PUT', path: string, body?: any) {
   const res = await fetch(`${API_BASE}${path}`, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...await authHeaders() },
     body: JSON.stringify(body ?? {}),
   });
   if (!res.ok) {
@@ -224,8 +230,6 @@ export const dbShorti = {
 };
 
 // ============ FILE UPLOAD (Supabase Storage bucket media) ============
-import { supabaseClient } from './supabaseClient';
-
 async function uploadToMediaBucket(file, folder, id) {
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
   const path = folder + '/' + id + '-' + Date.now() + '.' + ext;
@@ -460,14 +464,14 @@ export const dbNormativeActs = {
   upsert: async (item: any) => {
     const res = await fetch(`${API_BASE}/normative-acts`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...await authHeaders() },
       body: JSON.stringify(item),
     });
     if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'normative-acts upsert failed'); }
     return item;
   },
   remove: async (id: string) => {
-    const res = await fetch(`${API_BASE}/normative-acts?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE}/normative-acts?id=${encodeURIComponent(id)}`, { method: 'DELETE', headers: await authHeaders() });
     if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'normative-acts remove failed'); }
     return true;
   },

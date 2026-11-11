@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { dbVisitors } from '@/lib/supabase-db';
@@ -23,12 +23,12 @@ import AdminNormativeActs from './admin/AdminNormativeActs';
 import AdminShorti from './admin/AdminShorti';
 import AdminDocuments from './admin/AdminDocuments';
 const AdminPage: React.FC = () => {
-  const { isAuthenticated, isAdmin, isEditor, currentUser } = useAuth();
+  const { isAuthenticated, isAdmin, isEditor, currentUser, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isAuthenticated) navigate('/login');
-  }, [isAuthenticated, navigate]);
+    if (!loading && !isAuthenticated) navigate('/login');
+  }, [loading, isAuthenticated, navigate]);
   const { matches, teams, players, getActiveSeason, competitions, scorers, playersOfWeek } = useData();
   
   // Default tab: editors go to 'live', admins go to 'dashboard'
@@ -46,8 +46,8 @@ const AdminPage: React.FC = () => {
 
   const [visitorStats, setVisitorStats] = useState<any>(null);
   useEffect(() => {
-    dbVisitors.getStats().then(setVisitorStats).catch(() => {});
-  }, []);
+    if (isAuthenticated) dbVisitors.getStats().then(setVisitorStats).catch(() => {});
+  }, [isAuthenticated]);
 
   if (!isAuthenticated) return null;
 
@@ -75,7 +75,6 @@ const AdminPage: React.FC = () => {
     { key: 'pow', label: 'Lojtari Javës', icon: null, editorAccess: false },
     { key: 'settings', label: 'Cilësimet', icon: null, editorAccess: false },
     { key: 'decisions', label: 'Komisioni', icon: null, editorAccess: false },
-    { key: 'editors', label: 'Editoret', icon: null, editorAccess: false },
     { key: 'teamsplayers', label: 'Skuadrat & Lojtaret', icon: null, editorAccess: false },
     { key: 'kombetarja', label: 'Kombetarja', icon: null, editorAccess: false },
     { key: 'playoff', label: 'PlayOff', icon: null, editorAccess: false },
