@@ -158,7 +158,6 @@ const AdminSettings: React.FC = () => {
   const sections = [
     { key: 'seasons', label: 'Sezonet' },
     { key: 'competitions', label: 'Kompeticionet' },
-    { key: 'editors', label: 'Editorët' },
     { key: 'general', label: 'Përgjithshme' },
     { key: 'header', label: 'Header' },
     { key: 'suspensions', label: 'Kartona & Pezullime' },
