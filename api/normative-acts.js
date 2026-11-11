@@ -1,4 +1,5 @@
-﻿import { supabase } from './_supabaseClient.js';
+import { requireAdmin } from './_adminAuth.js';
+import { supabase } from './_supabaseClient.js';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
@@ -12,6 +13,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
+    if (!await requireAdmin(req, res)) return;
     try {
       const item = req.body;
       const { data: existing } = await supabase
@@ -30,6 +32,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'DELETE') {
+    if (!await requireAdmin(req, res)) return;
     try {
       const { id } = req.query;
       const { data: existing } = await supabase

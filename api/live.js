@@ -1,7 +1,7 @@
-﻿import { getAppData } from './_supabaseClient.js';
+import { getAppData } from './_supabaseClient.js';
 
 const LIGHT_FIELDS = new Set([
-  'matches', 'goals', 'seasons', 'competitions', 'scorers', 'playersOfWeek', 'users', 'decisions',
+  'matches', 'goals', 'seasons', 'competitions', 'scorers', 'playersOfWeek',  'decisions',
 ]);
 
 export default async function handler(req, res) {

@@ -1,9 +1,11 @@
+import { requireAdmin } from './_adminAuth.js';
 import { supabase } from './_supabaseClient.js';
 
 const NOTIF_MAX_AGE_MS = 2 * 60 * 60 * 1000;
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {
+    if (!await requireAdmin(req, res)) return;
     const { event, payload } = req.body || {};
     if (!event) {
       res.status(400).json({ error: 'Mungon "event"' });

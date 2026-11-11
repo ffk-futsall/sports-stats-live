@@ -1,260 +1,29 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { useData } from '@/context/DataContext';
 import Header from '@/components/Header';
-import { Editor } from '@/types';
-import { v4 as uuidv4 } from 'uuid';
 
-var LoginPage: React.FC = function() {
-  var _un = useState('');
-  var username = _un[0]; var setUsername = _un[1];
-  var _pw = useState('');
-  var password = _pw[0]; var setPassword = _pw[1];
-  var _sp = useState(false);
-  var showPassword = _sp[0]; var setShowPassword = _sp[1];
-  var _err = useState('');
-  var error = _err[0]; var setError = _err[1];
-  var _mode = useState<'login' | 'register' | 'success'>('login');
-  var mode = _mode[0]; var setMode = _mode[1];
-
-  var _data = useData();
-  var teams = _data.teams;
-  var competitions = _data.competitions;
-  var getActiveSeason = _data.getActiveSeason;
-  var activeSeason = getActiveSeason();
-
-  var _reg = useState({ firstName: '', lastName: '', username: '', password: '', phone: '', email: '', teamId: '' });
-  var reg = _reg[0]; var setReg = _reg[1];
-  var _regErr = useState('');
-  var regErr = _regErr[0]; var setRegErr = _regErr[1];
-
-  var auth = useAuth();
-  var navigate = useNavigate();
-
-  var superligaComp = competitions.find(function(c) { return c.type === 'superliga' && (activeSeason ? c.seasonId === activeSeason.id : true); });
-  var ligaPareComp = competitions.find(function(c) { return c.type === 'liga_pare' && (activeSeason ? c.seasonId === activeSeason.id : true); });
-  var superligaTeams = teams.filter(function(t) { return superligaComp ? t.competitionId === superligaComp.id : false; });
-  var ligaPareTeams = teams.filter(function(t) { return ligaPareComp ? t.competitionId === ligaPareComp.id : false; });
-
-  var handleLogin = function(e: React.FormEvent) {
-    e.preventDefault();
-    setError('');
-    if (!username || !password) {
-      setError('Ploteso te gjitha fushat.');
-      return null;
-    }
-
-    var editors: Editor[] = [];
-    try { var saved = localStorage.getItem('ffk_editors'); if (saved) editors = JSON.parse(saved); } catch(e) {}
-    var editorMatch = editors.find(function(ed) { return ed.username === username && ed.password === password; });
-
-    if (editorMatch) {
-      if (editorMatch.status === 'pending') {
-        setError('Llogaria juaj eshte ne pritje te aprovimit. Ju lutem prisni.');
-        return null;
-      }
-      if (editorMatch.status === 'rejected') {
-        setError('Llogaria juaj eshte refuzuar. Per informata kontaktoni +38345278279.');
-        return null;
-      }
-    }
-
-    var success = auth.login(username, password);
-    if (success) {
-      navigate('/admin');
-    } else {
-      if (editorMatch && editorMatch.status === 'approved') {
-        localStorage.setItem('ffk_auth_user', JSON.stringify({ id: editorMatch.id, username: editorMatch.username, password: editorMatch.password, role: 'editor' }));
-        window.location.href = '/admin';
-      } else {
-        setError('Emri i perdoruesit ose fjalekalimi jane gabim.');
-      }
-    }
+export default function LoginPage() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const auth = useAuth();
+  const navigate = useNavigate();
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault(); setError(''); setBusy(true);
+    try {
+      if (await auth.login(email, password)) navigate('/admin');
+      else setError('Kyçja dështoi. Kontrolloni të dhënat ose qasjen administrative.');
+    } catch { setError('Kyçja nuk është e disponueshme. Provoni përsëri.'); }
+    finally { setBusy(false); }
   };
-
-  var handleRegister = function(e: React.FormEvent) {
-    e.preventDefault();
-    setRegErr('');
-    if (!reg.firstName || !reg.lastName || !reg.username || !reg.password || !reg.phone || !reg.email || !reg.teamId) {
-      setRegErr('Ploteso te gjitha fushat.');
-      return null;
-    }
-
-    var editors: Editor[] = [];
-    try { var saved = localStorage.getItem('ffk_editors'); if (saved) editors = JSON.parse(saved); } catch(e) {}
-
-    var exists = editors.find(function(ed) { return ed.username === reg.username || ed.email === reg.email; });
-    if (exists) {
-      setRegErr('Ky username ose email eshte i regjistruar tashme.');
-      return null;
-    }
-
-    var newEditor: Editor = {
-      id: uuidv4(),
-      firstName: reg.firstName,
-      lastName: reg.lastName,
-      username: reg.username,
-      password: reg.password,
-      phone: reg.phone,
-      email: reg.email,
-      teamId: reg.teamId,
-      status: 'pending',
-      seasonId: activeSeason ? activeSeason.id : '',
-    };
-
-    editors.push(newEditor);
-    localStorage.setItem('ffk_editors', JSON.stringify(editors));
-    setMode('success');
-  };
-
-  if (mode === 'success') {
-    return (
-      <div className="min-h-screen bg-[#F1F5F9]">
-        <Header />
-        <div className="flex items-center justify-center px-4 py-16">
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 w-full max-w-md text-center">
-            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              
-            </div>
-            <h2 className="text-xl font-bold text-gray-800 mb-3">Faleminderit qe jeni pjes e jona!</h2>
-            <p className="text-gray-500 text-sm mb-4 leading-relaxed">
-              Ju lutem prisni deri ne aprovimin e llogarise tuaj.
-            </p>
-            <div className="bg-[#0f1830]/10 border border-[#0f1830]/15 rounded-xl p-4 mb-6">
-              <p className="text-sm text-[#1c3570] font-medium">Per informata shtese kontaktoni:</p>
-              <p className="text-lg font-bold text-[#1c3570] mt-1">+383 45 278 279</p>
-            </div>
-            <button onClick={function() { setMode('login'); setReg({ firstName: '', lastName: '', username: '', password: '', phone: '', email: '', teamId: '' }); }} className="w-full py-2.5 bg-[#0f1830] text-white rounded-xl font-medium hover:bg-[#1c3570] transition-colors">
-              Kthehu ne Hyrje
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (mode === 'register') {
-    return (
-      <div className="min-h-screen bg-[#F1F5F9]">
-        <Header />
-        <div className="flex items-center justify-center px-4 py-10">
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 w-full max-w-lg">
-            <button onClick={function() { setMode('login'); }} className="flex items-center gap-2 text-sm text-gray-500 hover:text-[#0f1830] mb-4 transition-colors">
-                Kthehu ne Hyrje
-            </button>
-            <div className="flex items-center justify-center mb-6">
-              <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center">
-                
-              </div>
-            </div>
-            <h1 className="text-2xl font-bold text-gray-800 text-center mb-2">Regjistrohu si Editor</h1>
-            <p className="text-gray-500 text-sm text-center mb-6">Ploteso te dhenat per te krijuar llogarine</p>
-
-            <form onSubmit={handleRegister} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Emri</label>
-                  <input type="text" value={reg.firstName} onChange={function(e) { setReg(Object.assign({}, reg, { firstName: e.target.value })); }} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0f1830] focus:border-transparent outline-none" placeholder="Emri..." />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Mbiemri</label>
-                  <input type="text" value={reg.lastName} onChange={function(e) { setReg(Object.assign({}, reg, { lastName: e.target.value })); }} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0f1830] focus:border-transparent outline-none" placeholder="Mbiemri..." />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                <input type="text" value={reg.username} onChange={function(e) { setReg(Object.assign({}, reg, { username: e.target.value })); }} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0f1830] focus:border-transparent outline-none" placeholder="Username..." />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Fjalekalimi</label>
-                <input type="password" value={reg.password} onChange={function(e) { setReg(Object.assign({}, reg, { password: e.target.value })); }} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0f1830] focus:border-transparent outline-none" placeholder="Fjalekalimi..." />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nr. Telefonit</label>
-                  <input type="tel" value={reg.phone} onChange={function(e) { setReg(Object.assign({}, reg, { phone: e.target.value })); }} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0f1830] focus:border-transparent outline-none" placeholder="+383..." />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input type="email" value={reg.email} onChange={function(e) { setReg(Object.assign({}, reg, { email: e.target.value })); }} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0f1830] focus:border-transparent outline-none" placeholder="email@..." />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Zgjedh Skuadren</label>
-                <select value={reg.teamId} onChange={function(e) { setReg(Object.assign({}, reg, { teamId: e.target.value })); }} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0f1830] focus:border-transparent outline-none bg-white">
-                  <option value="">-- Zgjedh skuadren --</option>
-                  {superligaTeams.length > 0 && <optgroup label="Superliga">
-                    {superligaTeams.map(function(t) { return <option key={t.id} value={t.id}>{t.name}</option>; })}
-                  </optgroup>}
-                  {ligaPareTeams.length > 0 && <optgroup label="Liga e Pare">
-                    {ligaPareTeams.map(function(t) { return <option key={t.id} value={t.id}>{t.name}</option>; })}
-                  </optgroup>}
-                </select>
-              </div>
-
-              {regErr && (
-                <p className="text-red-500 text-sm bg-red-50 px-3 py-2 rounded-lg">{regErr}</p>
-              )}
-
-              <button type="submit" className="w-full py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors">
-                Regjistrohu
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-[#F1F5F9]">
-      <Header />
-      <div className="flex items-center justify-center px-4 py-16">
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 w-full max-w-md">
-          <div className="flex items-center justify-center mb-6">
-            <div className="w-14 h-14 bg-[#0f1830]/10 rounded-2xl flex items-center justify-center">
-              
-            </div>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-800 text-center mb-2">Hyr ne Admin Panel</h1>
-          <p className="text-gray-500 text-sm text-center mb-6">Vendos kredencialet per te hyre</p>
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Emri i Perdoruesit</label>
-              <input type="text" value={username} onChange={function(e) { setUsername(e.target.value); }} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0f1830] focus:border-transparent outline-none" placeholder="Shkruaj emrin..." />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fjalekalimi</label>
-              <div className="relative">
-                <input type={showPassword ? 'text' : 'password'} value={password} onChange={function(e) { setPassword(e.target.value); }} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0f1830] focus:border-transparent outline-none pr-10" placeholder="Shkruaj fjalekalimin..." />
-                <button type="button" onClick={function() { setShowPassword(!showPassword); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  {showPassword ? null : "9"}
-                </button>
-              </div>
-            </div>
-
-            {error && (
-              <p className="text-red-500 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>
-            )}
-
-            <button type="submit" className="w-full py-2.5 bg-[#0f1830] text-white rounded-xl font-medium hover:bg-[#1c3570] transition-colors">
-              Hyr
-            </button>
-          </form>
-
-          <div className="mt-6 pt-6 border-t border-gray-100 text-center">
-            <p className="text-sm text-gray-500 mb-3">Nuk keni llogari?</p>
-            <button onClick={function() { setMode('register'); setError(''); }} className="w-full py-2.5 bg-emerald-50 text-emerald-700 rounded-xl font-medium hover:bg-emerald-100 transition-colors flex items-center justify-center gap-2">
-              
-              Regjistrohu si Editor
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default LoginPage;
+  return <div className="min-h-screen bg-[#F1F5F9]"><Header /><main className="flex justify-center px-4 py-16">
+    <form onSubmit={submit} className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg space-y-5">
+      <h1 className="text-2xl font-bold text-center">Kyçja e administratorit</h1>
+      <label className="block text-sm">Email<input className="mt-1 w-full rounded-lg border p-3" type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} required /></label>
+      <label className="block text-sm">Fjalëkalimi<input className="mt-1 w-full rounded-lg border p-3" type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required /></label>
+      {error && <p role="alert" className="text-red-700 text-sm">{error}</p>}
+      <button disabled={busy} className="w-full rounded-lg bg-[#0f1830] px-4 py-3 text-white disabled:opacity-50">{busy ? 'Duke u kyçur…' : 'Kyçu'}</button>
+    </form></main></div>;
+}
