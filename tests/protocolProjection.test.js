@@ -9,3 +9,5 @@ test('only explicitly approved fields are exposed', () => {
   for (const privateValue of ['PRIVATEID','private-signature','private-note','elapsedMs','clock']) assert.equal(encoded.includes(privateValue), false);
 });
 test('malformed and missing data are safe', () => { assert.doesNotThrow(() => publicProtocolSnapshot(null)); assert.deepEqual(publicProtocolSnapshot({teams:{a:{players:'bad'}}}).teams.a.players, []); });
+
+test('goal score exposes only the recorded numeric score', () => { const out=publicProtocolSnapshot({goals:[{team:'a',scorerName:'A',score:'1:0'},{team:'b',scorerName:'B',score:'private'}]}); assert.equal(out.goals[0].score,'1:0'); assert.equal(out.goals[1].score,''); });

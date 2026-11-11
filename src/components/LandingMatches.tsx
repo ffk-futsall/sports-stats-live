@@ -79,6 +79,7 @@ const LandingMatches: React.FC<LandingMatchesProps> = ({ initialTab = 'upcoming'
   const ligaPareMatches = ligaPareData.matches;
   const kupaMatches = kupaData.matches;
   const hasAny = superligaMatches.length > 0 || ligaPareMatches.length > 0 || kupaMatches.length > 0;
+  const unavailableEmpty = activeTab === 'live' && protocolError && protocolMatches.length === 0 && !hasAny;
 
   const liveCount = seasonMatches.filter(m => m.status === 'live' && !publishedIds.has(m.id)).length + protocolMatches.filter(m=>m.phase!=='finished').length;
 
@@ -259,11 +260,11 @@ const LandingMatches: React.FC<LandingMatchesProps> = ({ initialTab = 'upcoming'
         </div>
         {activeTab === 'live' && protocolError && <p role="alert" className="mb-4 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 p-3 text-sm">Përditësimi live nuk është i disponueshëm; të dhënat mund të jenë të vjetra.</p>}
         {activeTab === 'live' && <ProtocolLiveMatches matches={protocolMatches} />}
-        {!(activeTab === 'live' && protocolMatches.length && !superligaMatches.length) && <MatchGrid matchList={superligaMatches} title="Superliga e Kosoves" week={superligaData.week} />}
-        {!(activeTab === 'live' && protocolMatches.length && !ligaPareMatches.length) && <MatchGrid matchList={ligaPareMatches} title="Liga e Pare" week={ligaPareData.week} />}
-        {!(activeTab === 'live' && protocolMatches.length && !kupaMatches.length) && <MatchGrid matchList={kupaMatches} title="Kupa e Kosoves" week={kupaData.week} isKupa />}
+        {!unavailableEmpty && !(activeTab === 'live' && protocolMatches.length && !superligaMatches.length) && <MatchGrid matchList={superligaMatches} title="Superliga e Kosoves" week={superligaData.week} />}
+        {!unavailableEmpty && !(activeTab === 'live' && protocolMatches.length && !ligaPareMatches.length) && <MatchGrid matchList={ligaPareMatches} title="Liga e Pare" week={ligaPareData.week} />}
+        {!unavailableEmpty && !(activeTab === 'live' && protocolMatches.length && !kupaMatches.length) && <MatchGrid matchList={kupaMatches} title="Kupa e Kosoves" week={kupaData.week} isKupa />}
 
-        {!hasAny && !(activeTab === 'live' && protocolMatches.length > 0) && (
+        {!unavailableEmpty && !hasAny && !(activeTab === 'live' && protocolMatches.length > 0) && (
           <div className="text-center py-10">
             <p className="text-gray-400 text-sm">Nuk ka ndeshje per kete kategori.</p>
           </div>
