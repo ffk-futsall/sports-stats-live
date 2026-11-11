@@ -23,7 +23,7 @@ export default async function handler(req,res) {
       const {data:existing,error:lookupError}=await supabase.from('protocol_delegates').select('id').eq('username',username).maybeSingle();
       if (lookupError) throw lookupError;
       if (existing) return error(res,409,'Ky emër përdoruesi ekziston.');
-      const {data:created,error:authError}=await supabase.auth.admin.createUser({email:`${username}@delegates.invalid`,password,email_confirm:true});
+      const {data:created,error:authError}=await supabase.auth.admin.createUser({email:`urim.ffkfutsall+delegat-${username}@gmail.com`,password,email_confirm:true});
       if (authError || !created?.user) return error(res,409,'Llogaria nuk u krijua. Kontrolloni emrin e përdoruesit.');
       const {data:delegate,error:insertError}=await supabase.from('protocol_delegates').insert({user_id:created.user.id,username,first_name:firstName,last_name:lastName,city}).select('id,username,first_name,last_name,city,active,must_change_password,created_at').single();
       if (insertError) { await supabase.auth.admin.deleteUser(created.user.id); throw insertError; }
@@ -40,7 +40,7 @@ export default async function handler(req,res) {
       const details={home:teams.find(t=>t.id===match.homeTeamId)?.name||'',away:teams.find(t=>t.id===match.awayTeamId)?.name||'',competition:comp?.name||'',date:match.date||'',time:match.time||'',venue:match.venue||'',round:match.week||''};
       if (!details.home || !details.away) return error(res,400,'Ndeshjes i mungon skuadra.');
       const {data:assignment,error:insertError}=await supabase.from('protocol_assignments').insert({delegate_id:delegate.id,portal_match_id:matchId,match_details:details}).select('id,delegate_id,portal_match_id,match_details,state,created_at').single();
-      if (insertError?.code==='23505') return error(res,409,'Kjo ndeshje është caktuar tashmë për këtë delegat.');
+      if (insertError?.code==='23505') return error(res,409,'Kjo ndeshje ka tashmë një caktim aktiv ose i është caktuar më parë këtij delegati.');
       if (insertError) throw insertError;
       return res.status(201).json({assignment});
     }

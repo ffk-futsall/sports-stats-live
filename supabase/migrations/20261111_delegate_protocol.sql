@@ -29,6 +29,8 @@ create table if not exists public.protocol_assignments (
   check ((state = 'rejected' and length(trim(coalesce(rejection_reason,''))) between 1 and 1000) or (state <> 'rejected' and rejection_reason is null)),
   check (not published or (state = 'accepted' and public_snapshot is not null))
 );
+-- One active delegate assignment per match prevents competing public reports.
+create unique index if not exists protocol_one_active_match on public.protocol_assignments(portal_match_id) where state in ('pending','accepted');
 create index if not exists protocol_assignments_delegate_idx on public.protocol_assignments(delegate_id,created_at desc);
 create index if not exists protocol_assignments_published_idx on public.protocol_assignments(updated_at desc) where published;
 alter table public.protocol_delegates enable row level security;
