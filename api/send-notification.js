@@ -1,3 +1,4 @@
+import { requireAdmin } from './_adminAuth.js';
 import webpush from 'web-push';
 import { supabase } from './_supabaseClient.js';
 
@@ -13,6 +14,7 @@ export default async function handler(req, res) {
     return;
   }
 
+  if (!await requireAdmin(req, res)) return;
   const { title, body, url } = req.body || {};
   if (!title) {
     res.status(400).json({ error: 'Mungon "title"' });

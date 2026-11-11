@@ -1,4 +1,5 @@
-﻿import { supabase } from './_supabaseClient.js';
+import { requireAdmin } from './_adminAuth.js';
+import { supabase } from './_supabaseClient.js';
 
 const ALLOWED_FIELDS = ['ip', 'city', 'region', 'country', 'visited_at'];
 
@@ -25,6 +26,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'GET') {
+    if (!await requireAdmin(req, res)) return;
     try {
       const { data: all, error } = await supabase
         .from('visitors').select('*').order('visited_at', { ascending: false }).limit(500);
