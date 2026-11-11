@@ -79,7 +79,7 @@ export default function ProtocolLiveMatches({matches}:{matches:ProtocolMatch[]})
   const [openId,setOpenId]=useState<string|null>(null),[activeTab,setActiveTab]=useState<Tab>('summary');
   const groups=useMemo(()=>{const out=new Map<string,ProtocolMatch[]>();for(const match of matches){const key=match.competition||'Ndeshje';out.set(key,[...(out.get(key)||[]),match]);}return [...out.entries()];},[matches]);
   if(!matches.length)return null;
-  return <div className="space-y-3 mb-6" aria-label="Ndeshjet nga procesverbali">{groups.map(([competition,group])=><section key={competition} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+  return <div className="mx-auto mb-6 w-full max-w-[760px] space-y-3" aria-label="Ndeshjet nga procesverbali">{groups.map(([competition,group])=><section key={competition} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
     <div className="flex items-center justify-between gap-3 bg-slate-100 px-4 py-2 sm:px-5"><h2 className="text-sm font-bold text-slate-800">{competition}</h2><span className="text-sm text-slate-500">{group.length} ndeshje</span></div>
     {group.map(m=>{const open=openId===m.id;const portal=portalMatches.find(x=>x.id===m.portalMatchId);const home=portal?getTeamById(portal.homeTeamId):undefined;const away=portal?getTeamById(portal.awayTeamId):undefined;const live=!['setup','finished'].includes(m.phase);
       return <article key={m.id} className="border-t border-slate-200 first:border-0">
