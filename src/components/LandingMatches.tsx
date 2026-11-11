@@ -1,7 +1,8 @@
-﻿import React, { useState, useMemo } from 'react';
+﻿import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '@/context/DataContext';
 import MatchDetailModal from './MatchDetailModal';
 import MatchVoteWidget from './MatchVoteWidget';
+import ProtocolLiveMatches, { ProtocolMatch } from './ProtocolLiveMatches';
 import { Match } from '@/types';
 type TabType = 'upcoming' | 'live' | 'finished';
 
@@ -21,6 +22,14 @@ const LandingMatches: React.FC<LandingMatchesProps> = ({ initialTab = 'upcoming'
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const activeSeason = getActiveSeason();
+  const [protocolMatches,setProtocolMatches] = useState<ProtocolMatch[]>([]);
+  const [protocolError,setProtocolError] = useState(false);
+  useEffect(() => {
+    let active=true;
+    const load=()=>fetch('/api/protocol-live',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error();return r.json()}).then(d=>{if(active){setProtocolMatches(Array.isArray(d.matches)?d.matches:[]);setProtocolError(false)}}).catch(()=>{if(active)setProtocolError(true)});
+    load();const timer=setInterval(load,10000);return()=>{active=false;clearInterval(timer)};
+  },[]);
+  const publishedIds = useMemo(()=>new Set(protocolMatches.map(m=>m.portalMatchId)),[protocolMatches]);
 
   const seasonMatches = useMemo(() =>
     activeSeason ? matches.filter(m => m.seasonId === activeSeason.id) : matches,
@@ -56,7 +65,7 @@ const LandingMatches: React.FC<LandingMatchesProps> = ({ initialTab = 'upcoming'
       const minWeek = pl.length > 0 ? Math.min(...pl.map(m => m.week || 0)) : undefined;
       return { matches: pl, week: minWeek };
     }
-    if (status === 'live') return { matches: filtered.filter(m => m.status === 'live') };
+    if (status === 'live') return { matches: filtered.filter(m => m.status === 'live' && !publishedIds.has(m.id)) };
     return { matches: [] };
   };
 
@@ -71,7 +80,7 @@ const LandingMatches: React.FC<LandingMatchesProps> = ({ initialTab = 'upcoming'
   const kupaMatches = kupaData.matches;
   const hasAny = superligaMatches.length > 0 || ligaPareMatches.length > 0 || kupaMatches.length > 0;
 
-  const liveCount = seasonMatches.filter(m => m.status === 'live').length;
+  const liveCount = seasonMatches.filter(m => m.status === 'live' && !publishedIds.has(m.id)).length + protocolMatches.filter(m=>m.phase!=='finished').length;
 
   const tabs: { key: TabType; label: string }[] = [
     { key: 'live', label: 'Live' },
@@ -248,11 +257,13 @@ const LandingMatches: React.FC<LandingMatchesProps> = ({ initialTab = 'upcoming'
             })}
           </div>
         </div>
-        <MatchGrid matchList={superligaMatches} title="Superliga e Kosoves" week={superligaData.week} />
-        <MatchGrid matchList={ligaPareMatches} title="Liga e Pare" week={ligaPareData.week} />
-        <MatchGrid matchList={kupaMatches} title="Kupa e Kosoves" week={kupaData.week} isKupa />
+        {activeTab === 'live' && protocolError && <p role="alert" className="mb-4 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 p-3 text-sm">Përditësimi live nuk është i disponueshëm; të dhënat mund të jenë të vjetra.</p>}
+        {activeTab === 'live' && <ProtocolLiveMatches matches={protocolMatches} />}
+        {!(activeTab === 'live' && protocolMatches.length && !superligaMatches.length) && <MatchGrid matchList={superligaMatches} title="Superliga e Kosoves" week={superligaData.week} />}
+        {!(activeTab === 'live' && protocolMatches.length && !ligaPareMatches.length) && <MatchGrid matchList={ligaPareMatches} title="Liga e Pare" week={ligaPareData.week} />}
+        {!(activeTab === 'live' && protocolMatches.length && !kupaMatches.length) && <MatchGrid matchList={kupaMatches} title="Kupa e Kosoves" week={kupaData.week} isKupa />}
 
-        {!hasAny && (
+        {!hasAny && !(activeTab === 'live' && protocolMatches.length > 0) && (
           <div className="text-center py-10">
             <p className="text-gray-400 text-sm">Nuk ka ndeshje per kete kategori.</p>
           </div>
