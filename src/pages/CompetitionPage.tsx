@@ -1,5 +1,6 @@
 ﻿import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '@/context/DataContext';
+import { LiveStandingsNotice, LiveTeamIndicators } from '@/components/LiveStandingIndicators';
 import { Match, CompetitionType } from '@/types';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -161,7 +162,7 @@ function getEmbedUrl(url: string): string {
 }
 
 const CompetitionPage: React.FC<Props> = ({ type, title }) => {
-  const { competitions, matches, getActiveSeason, calculateStandings, getAggregatedScorers, getTeamById, videos } = useData() as any;
+  const { competitions, matches, getActiveSeason, calculateStandings, getAggregatedScorers, getTeamById, videos, protocolLoading, protocolError } = useData() as any;
   const activeSeason = getActiveSeason();
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [activeTab, setActiveTab] = useState<'ndeshjet' | 'tabela' | 'golashenuesit'>('ndeshjet');
@@ -342,9 +343,10 @@ const CompetitionPage: React.FC<Props> = ({ type, title }) => {
             {standings.length === 0 ? <p className="text-gray-400 text-center py-8">Nuk ka te dhena per tabelen.</p> : (
               <>
                 <div className="bg-[#0f1830] px-5 py-3.5 flex items-center gap-2">
-                  <span className="text-sm font-bold text-white">{title}</span>
+                  <span className="text-sm font-bold text-white">{title}{standings.some(row=>row.liveResults.length>0) ? ' · LIVE' : ''}</span>
                   <span className="ml-auto text-[10px] text-gray-400 font-medium uppercase tracking-wider">Sezoni {activeSeason?.name}</span>
                 </div>
+                <LiveStandingsNotice rows={standings} loading={protocolLoading} error={protocolError} />
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm min-w-[560px] sm:min-w-0">
                     <thead>
@@ -363,29 +365,29 @@ const CompetitionPage: React.FC<Props> = ({ type, title }) => {
                     </thead>
                     <tbody>
                       {standings.map((row, i) => (
-                        <tr key={row.teamId} className={`${getRowBg(i + 1)} hover:bg-[#0f1830]/10/30 transition-colors border-b border-gray-100 last:border-0`}>
-                          <td className={`px-3 py-2.5 sticky left-0 z-10 ${getRowBg(i + 1)}`}>
+                        <tr key={row.teamId} className={`${row.liveResults.length ? 'bg-sky-50' : getRowBg(i + 1)} hover:bg-[#0f1830]/10/30 transition-colors border-b border-gray-100 last:border-0`}>
+                          <td className={`px-3 py-2.5 sticky left-0 z-10 ${row.liveResults.length ? 'bg-sky-50' : getRowBg(i + 1)}`}>
                             <div className="flex items-center">
                               <span className="w-1 h-6 rounded-sm mr-2 flex-shrink-0" style={Object.assign({}, { backgroundColor: getRowBorder(i + 1) })} />
                               <span className={`text-xs font-bold ${i < 3 ? 'text-[#0f1830]' : 'text-gray-400'}`}>{i + 1}</span>
                             </div>
                           </td>
-                          <td className={`px-3 py-2.5 sticky left-10 z-10 ${getRowBg(i + 1)}`}>
-                            <Link to={`/skuadra/${row.teamId}`} className="flex items-center gap-2 hover:text-[#0f1830] transition-colors group">
+                          <td className={`px-3 py-2.5 sticky left-10 z-10 ${row.liveResults.length ? 'bg-sky-50' : getRowBg(i + 1)}`}>
+                            <div className="flex items-center gap-2"><Link to={`/skuadra/${row.teamId}`} className="flex items-center gap-2 hover:text-[#0f1830] transition-colors group">
                               <div className="w-7 h-7 rounded-md bg-gray-50 overflow-hidden flex-shrink-0 border border-gray-200 group-hover:border-[#0f1830]/30 transition-colors">
                                 {row.teamLogo ? <img src={row.teamLogo} alt="" className="w-full h-full object-cover" /> : <span className="flex items-center justify-center w-full h-full text-[9px] text-gray-400 font-bold">{row.teamName.charAt(0)}</span>}
                               </div>
                               <span className="font-semibold text-gray-800 group-hover:text-[#0f1830] whitespace-nowrap text-[13px]">{row.teamName}</span>
-                            </Link>
+                            </Link><LiveTeamIndicators row={row}/></div>
                           </td>
-                          <td className="px-3 py-2.5 text-center text-gray-600 font-medium">{row.played}</td>
-                          <td className="px-3 py-2.5 text-center text-emerald-600 font-semibold">{row.won}</td>
-                          <td className="px-3 py-2.5 text-center text-gray-400">{row.drawn}</td>
-                          <td className="px-3 py-2.5 text-center text-red-500 font-semibold">{row.lost}</td>
-                          <td className="px-3 py-2.5 text-center text-gray-500 text-xs font-medium">{row.goalsFor}:{row.goalsAgainst}</td>
+                          <td className={`px-3 py-2.5 text-center font-medium ${row.liveResults.length?'text-rose-700':'text-gray-600'}`}>{row.played}</td>
+                          <td className={`px-3 py-2.5 text-center font-semibold ${row.liveResults.length?'text-rose-700':'text-emerald-600'}`}>{row.won}</td>
+                          <td className={`px-3 py-2.5 text-center ${row.liveResults.length?'text-rose-700 font-semibold':'text-gray-400'}`}>{row.drawn}</td>
+                          <td className={`px-3 py-2.5 text-center font-semibold ${row.liveResults.length?'text-rose-700':'text-red-500'}`}>{row.lost}</td>
+                          <td className={`px-3 py-2.5 text-center text-xs font-medium ${row.liveResults.length?'text-rose-700':'text-gray-500'}`}>{row.goalsFor}:{row.goalsAgainst}</td>
                           <td className="px-3 py-2.5 text-center font-bold text-xs" style={Object.assign({}, { color: row.goalDifference > 0 ? '#22C55E' : row.goalDifference < 0 ? '#EF4444' : '#9CA3AF' })}>{row.goalDifference > 0 ? '+' : ''}{row.goalDifference}</td>
                           <td className="px-3 py-2.5 text-center">
-                            <span className="inline-flex items-center justify-center w-8 h-7 rounded-md bg-[#0f1830] text-white font-bold text-xs">{row.points}</span>
+                            <span className={`inline-flex items-center justify-center w-8 h-7 rounded-md text-white font-bold text-xs ${row.liveResults.length?'bg-rose-700':'bg-[#0f1830]'}`}>{row.points}</span>
                           </td>
                           <td className="px-3 py-2.5 text-center hidden md:table-cell">
                             <div className="flex justify-center gap-0.5">

@@ -25,7 +25,7 @@ export default function AdminProtocolDelegates(){
   const act=async(body:Record<string,unknown>,success:string,confirmText?:string)=>{if(confirmText&&!window.confirm(confirmText))return;setBusy(true);setError('');setMessage('');try{await request('POST',body);await reload();setEditing(null);setMessage(success)}catch(e){setError((e as Error).message)}finally{setBusy(false)}};
   const teamName=(id:string)=>teams.find(t=>t.id===id)?.name||'Skuadër e panjohur';
   return <section className="space-y-6 max-w-5xl">
-    <header><h2 className="text-2xl font-bold text-slate-900">Delegatët Procesverbali</h2><p className="text-sm text-slate-600 mt-1">Krijoni llogari dhe caktoni ndeshjet. Rezultatet e procesverbalit nuk ndryshojnë renditjen.</p></header>
+    <header><h2 className="text-2xl font-bold text-slate-900">Delegatët Procesverbali</h2><p className="text-sm text-slate-600 mt-1">Krijoni llogari dhe caktoni ndeshjet. Rezultatet live ndikojnë përkohësisht në tabelat e ligës; rezultati zyrtar regjistrohet në portal.</p></header>
     {error&&<div role="alert" className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-red-800">{error}</div>}
     {message&&<div role="status" className="rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-green-800">{message}</div>}
     <form onSubmit={create} className="space-y-4 bg-white border border-slate-200 rounded-xl p-5">
