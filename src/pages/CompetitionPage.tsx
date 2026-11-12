@@ -343,7 +343,7 @@ const CompetitionPage: React.FC<Props> = ({ type, title }) => {
             {standings.length === 0 ? <p className="text-gray-400 text-center py-8">Nuk ka te dhena per tabelen.</p> : (
               <>
                 <div className="bg-[#0f1830] px-5 py-3.5 flex items-center gap-2">
-                  <span className="text-sm font-bold text-white">{title}{standings.some(row=>row.liveResults.length>0) ? ' · LIVE' : ''}</span>
+                  <span className="text-sm font-bold text-white">{title}{standings.some(row=>row.liveResults.some(result=>!result.provisional)) ? ' · LIVE' : ''}</span>
                   <span className="ml-auto text-[10px] text-gray-400 font-medium uppercase tracking-wider">Sezoni {activeSeason?.name}</span>
                 </div>
                 <LiveStandingsNotice rows={standings} loading={protocolLoading} error={protocolError} />
