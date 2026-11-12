@@ -4,7 +4,7 @@ import { useData } from '@/context/DataContext';
 
 type Side = 'a' | 'b';
 type Score = { a: string; b: string };
-type Player = { name: string; shirtNo: string };
+type Player = { name: string; shirtNo: string; starter?: boolean };
 type Official = { name: string; role: string };
 type Goal = { team: string; scorerName: string; shirtNo: string; minute: string; addedTime: string; period: string; score?: string };
 type Event = { kind: string; team: string; minute: string; period?: string; playerName: string; shirtNo: string; sourceRow: string; outgoingName: string; incomingName: string };
@@ -61,6 +61,8 @@ function EventList({m}:{m:ProtocolMatch}) {
 // The court is an illustration, not a player-tracking feed. Only recorded events are counted.
 function MatchCourt({m,homeLogo,awayLogo}:{m:ProtocolMatch;homeLogo?:string;awayLogo?:string}) {
   const events=m.events||[];
+  // Shfaqen vetëm startuesit e shënuar në procesverbal, jo lojtarët aktualë pas zëvendësimeve.
+  const starters:Record<Side,Player[]> = {a:(m.teams.a.players||[]).filter(p=>p.starter===true).slice(0,5), b:(m.teams.b.players||[]).filter(p=>p.starter===true).slice(0,5)};
   const counts=(side:Side,kind:string,red?:boolean)=>events.filter(e=>e.team===side&&e.kind===kind&&(red===undefined||Boolean(e.sourceRow?.toLowerCase().startsWith('kk'))===red)).length;
   const metrics=[{label:'Faulle',a:counts('a','foul'),b:counts('b','foul')},{label:'Kart. të verdhë',a:counts('a','card',false),b:counts('b','card',false)},{label:'Kart. të kuq',a:counts('a','card',true),b:counts('b','card',true)}];
   return <section aria-label="Pamja e ndeshjes live" className="px-3 sm:px-5 pt-4">
@@ -76,11 +78,30 @@ function MatchCourt({m,homeLogo,awayLogo}:{m:ProtocolMatch;homeLogo?:string;away
       </div>
       <div className="grid sm:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] border-t border-slate-200">
         <div className="p-3 sm:p-4 bg-slate-50">
-          <svg viewBox="0 0 600 310" className="block w-full rounded-md" role="img" aria-label="Ilustrim i fushës së futsallit, pa pozicionim të lojtarëve">
+          <div className="relative">
+          <svg viewBox="0 0 600 310" className="block w-full rounded-md" aria-hidden="true">
             <rect width="600" height="310" rx="9" fill="#28745f"/><path fill="#31846b" d="M0 0h75v310H0zm150 0h75v310h-75zm150 0h75v310h-75zm150 0h75v310h-75z"/>
             <g fill="none" stroke="#d9efe4" strokeWidth="3" opacity=".9"><rect x="18" y="18" width="564" height="274" rx="2"/><path d="M300 18v274"/><circle cx="300" cy="155" r="38"/><circle cx="300" cy="155" r="2" fill="#d9efe4"/><path d="M18 85h20a70 70 0 0 1 0 140H18M582 85h-20a70 70 0 0 0 0 140h20"/><path d="M18 125H5v60h13M582 125h13v60h-13"/><circle cx="98" cy="155" r="2" fill="#d9efe4"/><circle cx="502" cy="155" r="2" fill="#d9efe4"/></g>
           </svg>
-          <p className="mt-2 text-sm text-slate-600">Fusha e futsallit · ilustrim, jo pozicionim live</p>
+          <div className="absolute inset-[4%] grid grid-cols-2 gap-x-2" aria-label="Lojtarët startues në fushë">
+            {(['a','b'] as Side[]).map(side=><div key={side} className="grid grid-rows-5 min-w-0" aria-label={`Startuesit e ${m.teams[side].name}`}>
+              {starters[side].map((p,i)=><div key={i} className="flex min-w-0 items-center justify-center px-1">
+                <span title={`${p.shirtNo ? `#${p.shirtNo} · ` : ''}${p.name || 'Lojtar'}`} className={`inline-flex max-w-full min-w-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold leading-tight shadow-sm ${side==='a'?'bg-white text-slate-900':'bg-slate-900 text-white'}`}>
+                  <span className="shrink-0 tabular-nums">{p.shirtNo ? `#${p.shirtNo}` : '—'}</span><span className="truncate">{p.name||'Lojtar'}</span>
+                </span>
+              </div>)}
+            </div>)}
+          </div>
+          </div>
+          <h3 className="mt-2 text-sm font-bold text-slate-900">Lojtarët Startues</h3>
+          <p className="mt-1 text-xs text-slate-600">Pozicionet janë ilustruese; shfaqen startuesit e procesverbalit, jo zëvendësimet live.</p>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            {(['a','b'] as Side[]).map(side=><div key={side} className="min-w-0">
+              <h4 className="text-xs font-bold text-slate-700 break-words">{m.teams[side].name}</h4>
+              {starters[side].length ? <ul className="mt-1 space-y-1">{starters[side].map((p,i)=><li key={i} className="text-xs text-slate-700 break-words"><strong>{p.shirtNo?`#${p.shirtNo}`:'—'}</strong> {p.name||'Lojtar'}</li>)}</ul> : <p className="mt-1 text-xs text-slate-600">Startuesit nuk janë shënuar ose nuk janë publikuar ende.</p>}
+              {starters[side].length>0&&starters[side].length<5&&<p className="mt-1 text-xs text-slate-600">{starters[side].length} nga 5 startues të shënuar.</p>}
+            </div>)}
+          </div>
         </div>
         <div className="p-3 sm:p-4 sm:border-l border-t sm:border-t-0 border-slate-200">
           <h3 className="text-sm font-bold text-slate-900">Statistikat e regjistruara</h3>

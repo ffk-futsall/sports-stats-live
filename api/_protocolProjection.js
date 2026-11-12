@@ -5,7 +5,7 @@ const score = (x) => ({ a: text(x?.a, 8), b: text(x?.b, 8) });
 const team = (t) => ({
   name: text(t?.name),
   players: (Array.isArray(t?.players) ? t.players : []).slice(0, 30)
-    .map(p => ({ name: text(p?.name), shirtNo: text(p?.shirtNo, 8) })).filter(p => p.name || p.shirtNo),
+    .map(p => ({ name: text(p?.name), shirtNo: text(p?.shirtNo, 8), starter: p?.starter === true })).filter(p => p.name || p.shirtNo),
   officials: (Array.isArray(t?.officials) ? t.officials : []).slice(0, 15)
     .filter(o => o?.enabled !== false).map(o => ({ name: text(o?.name), role: text(o?.role) })).filter(o => o.name),
 });
