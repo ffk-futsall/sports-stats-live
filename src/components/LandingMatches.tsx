@@ -30,7 +30,7 @@ const LandingMatches: React.FC<LandingMatchesProps> = ({ initialTab = 'upcoming'
     }
     return [...latest.values()].filter(p=>{
       const portal=portalMatches.find(m=>m.id===p.portalMatchId);
-      return portal?.status!=='cancelled' && (activeTab==='live'?p.phase!=='finished':activeTab==='finished'?p.phase==='finished' && portal?.status!=='finished':false);
+      return portal?.status!=='cancelled' && (activeTab==='live'?p.phase!=='finished' && portal?.status!=='finished':activeTab==='finished'?p.phase==='finished' && !portal:false);
     });
   },[protocolMatches,portalMatches,activeTab]);
   const publishedIds = useMemo(()=>new Set(displayedProtocols.map(m=>m.portalMatchId).filter(Boolean)),[displayedProtocols]);
@@ -57,12 +57,12 @@ const LandingMatches: React.FC<LandingMatchesProps> = ({ initialTab = 'upcoming'
 
   const getCompMatches = (compId: string | undefined, status: string): { matches: Match[]; week?: number } => {
     if (!compId) return { matches: [] };
-    const filtered = seasonMatches.filter(m => m.competitionId === compId && m.isFeaturedLanding);
+    const filtered = seasonMatches.filter(m => m.competitionId === compId && (status === 'finished' || m.isFeaturedLanding));
     if (status === 'finished') {
       const fin = filtered.filter(m => m.status === 'finished');
       if (fin.length === 0) return { matches: [] };
       const maxWeek = Math.max(...fin.map(m => m.week || 0));
-      return { matches: fin.filter(m => m.week === maxWeek && !publishedIds.has(m.id)).sort((a, b) => (b.date || '').localeCompare(a.date || '')), week: maxWeek };
+      return { matches: fin.filter(m => !publishedIds.has(m.id)).sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.week || 0)-(a.week || 0)) };
     }
     if (status === 'planned') {
       const pl = filtered.filter(m => m.status === 'planned').sort((a, b) => (a.date || '').localeCompare(b.date || ''));
