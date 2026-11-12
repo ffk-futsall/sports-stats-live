@@ -278,7 +278,7 @@ const LandingMatches: React.FC<LandingMatchesProps> = ({ initialTab = 'upcoming'
           </div>
         </div>
         {activeTab === 'live' && protocolError && <p role="alert" className="mb-4 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 p-3 text-sm">Përditësimi live nuk është i disponueshëm; të dhënat mund të jenë të vjetra.</p>}
-        {activeTab === 'live' && <ProtocolLiveMatches matches={protocolMatches} />}
+        {activeTab === 'live' && <ProtocolLiveMatches matches={protocolMatches} stale={protocolError} />}
         {!unavailableEmpty && !(activeTab === 'live' && protocolMatches.length && !superligaMatches.length) && <MatchGrid matchList={superligaMatches} title="Superliga e Kosoves" week={superligaData.week} />}
         {!unavailableEmpty && !(activeTab === 'live' && protocolMatches.length && !ligaPareMatches.length) && <MatchGrid matchList={ligaPareMatches} title="Liga e Pare" week={ligaPareData.week} />}
         {!unavailableEmpty && !(activeTab === 'live' && protocolMatches.length && !kupaMatches.length) && <MatchGrid matchList={kupaMatches} title="Kupa e Kosoves" week={kupaData.week} isKupa />}

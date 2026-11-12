@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronDown, CircleDot, MapPin, CalendarDays, UserRound, ArrowRightLeft, Flag, Shield } from 'lucide-react';
 import { useData } from '@/context/DataContext';
+import { calculateLiveStandings } from '@/lib/standings';
 
 type Side = 'a' | 'b';
 type Score = { a: string; b: string };
@@ -13,7 +14,7 @@ export type ProtocolMatch = { id: string; portalMatchId: string; updatedAt: stri
 const phases: Record<string,string> = { setup:'Para fillimit', first:'Pjesa e parë', halftime:'Përfundoi pjesa e parë', second:'Pjesa e dytë', after_second:'Përfundoi pjesa e dytë', extra:'Koha shtesë', after_extra:'Përfundoi koha shtesë', penalties:'Penalltitë', finished:'Ndeshja përfundoi' };
 const rowPhases: Record<string,string> = {setup:'Para fillimit',first:'Pjesa e parë',halftime:'Pushim',second:'Pjesa e dytë',after_second:'Pjesa e dytë përfundoi',extra:'Koha shtesë',after_extra:'Koha shtesë përfundoi',penalties:'Penalltitë',finished:'Përfundoi'};
 const refNames: Record<string,string> = { ref1:'Gjyqtari 1', ref2:'Gjyqtari 2', ref3:'Gjyqtari 3', ref4:'Gjyqtari 4', delegate:'Delegati', timekeeper:'Kohëmatësi' };
-const tabs = [{id:'summary',label:'Përmbledhje'},{id:'lineups',label:'Formacionet'},{id:'info',label:'Informacione'}] as const;
+const tabs = [{id:'summary',label:'Përmbledhje'},{id:'lineups',label:'Formacionet'},{id:'standings',label:'Tabela live'},{id:'info',label:'Informacione'}] as const;
 type Tab = typeof tabs[number]['id'];
 type TimelineItem = { key:string; period:string; minute:string; addedTime?:string; team:string; kind:string; player:string; score?:string; sourceRow?:string; outgoing?:string; incoming?:string };
 const formatScore = (s?: Score) => s && s.a != null && s.b != null && s.a !== '' && s.b !== '' ? `${s.a} : ${s.b}` : '—';
@@ -121,6 +122,32 @@ function Lineups({m}:{m:ProtocolMatch}) {
     {m.teams[side].officials.length?<ul className="space-y-2">{m.teams[side].officials.map((o,i)=><li key={i} className="text-sm text-slate-900 break-words">{o.name}{o.role&&<span className="block text-sm text-slate-600">{o.role}</span>}</li>)}</ul>:<p className="text-sm text-slate-600">Nuk ka zyrtarë të regjistruar.</p>}
   </section>)}</div>;
 }
+function LiveStandings({match,protocols,stale}:{match:ProtocolMatch;protocols:ProtocolMatch[];stale:boolean}) {
+  const {matches,teams,competitions}=useData();
+  const portal=matches.find(item=>item.id===match.portalMatchId);
+  const competition=competitions.find(item=>item.id===portal?.competitionId);
+  const rows=useMemo(()=>portal && competition && competition.type!=='kupa' ? calculateLiveStandings(teams,matches,protocols,portal.competitionId) : [],[teams,matches,protocols,portal,competition]);
+  if(!portal || !competition) return <p className="p-5 text-sm text-slate-600">Ndeshja nuk është lidhur me një garë në portal; tabela nuk mund të llogaritet.</p>;
+  if(competition.type==='kupa') return <p className="p-5 text-sm text-slate-600">Tabela live është e disponueshme për garat e ligës, jo për ndeshjet e kupës.</p>;
+  if(!rows.length) return <p className="p-5 text-sm text-slate-600">Nuk ka skuadra të regjistruara për këtë garë.</p>;
+  return <section className="p-3 sm:p-5" aria-label={`Tabela live ${competition.name}`}>
+    <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-red-500"/><h3 className="font-bold text-slate-900">Tabela live · {competition.name}</h3></div>
+    <p className="mt-1 text-xs text-slate-600">Parashikim sipas rezultateve aktuale; renditja zyrtare nuk ndryshohet. Fitore 3 pikë, barazim 1 pikë. Renditja: pikë, goldallim, gola të shënuar.</p>
+    <p className="mt-1 text-xs text-slate-600">Ndeshjet e përfunduara në procesverbal mbeten të përkohshme deri sa rezultati të regjistrohet në portal.</p>
+    {stale&&<p role="status" className="mt-2 text-xs font-semibold text-red-700">Përditësimi live dështoi; të dhënat mund të jenë të vjetruara.</p>}
+    <p className="mt-2 text-xs text-slate-500 sm:hidden">Rrëshqitni tabelën anash për të parë të gjitha statistikat.</p>
+    <div className="mt-3 overflow-x-auto rounded border border-slate-200"><table className="w-full min-w-[560px] text-xs text-left tabular-nums">
+      <thead className="bg-slate-100 text-slate-600"><tr><th className="p-2">#</th><th className="p-2">Skuadra / rezultati</th><th className="p-2 text-center" title="Ndeshje">ND</th><th className="p-2 text-center" title="Fitore">F</th><th className="p-2 text-center" title="Barazime">B</th><th className="p-2 text-center" title="Humbje">H</th><th className="p-2 text-center" title="Golat e shënuar dhe të pranuar">G</th><th className="p-2 text-center" title="Goldallimi">DG</th><th className="p-2 text-center" title="Pikë">P</th><th className="p-2 text-center">Forma</th></tr></thead>
+      <tbody className="divide-y divide-slate-100">{rows.map((row,i)=><tr key={row.teamId} className={row.liveResults.length?'bg-sky-50':'bg-white'}>
+        <td className="p-2 font-bold">{i+1}</td>
+        <td className="p-2"><div className="flex items-center gap-1.5"><TeamMark logo={row.teamLogo}/><span className="font-semibold text-slate-900 whitespace-nowrap">{row.teamName}</span>{row.positionChange!==0&&<span className={row.positionChange>0?'text-emerald-700':'text-red-700'} aria-label={row.positionChange>0?`U ngrit ${row.positionChange} pozita`:`Ra ${-row.positionChange} pozita`}>{row.positionChange>0?'▲':'▼'}</span>}{row.liveResults.map(result=><span key={result.matchId} title={result.provisional?'Rezultat në pritje të konfirmimit zyrtar':'Rezultat live nga këndvështrimi i skuadrës'} className={`rounded px-1.5 py-0.5 font-bold text-white ${result.provisional?'bg-slate-500':result.result==='win'?'bg-emerald-600':result.result==='loss'?'bg-red-600':'bg-amber-600'}`}>{result.score}</span>)}</div></td>
+        {[row.played,row.won,row.drawn,row.lost,`${row.goalsFor}:${row.goalsAgainst}`,row.goalDifference,row.points].map((value,n)=><td key={n} className={`p-2 text-center ${row.liveResults.length?'font-semibold text-rose-700':'text-slate-700'} ${n===6?'font-bold':''}`}>{value}</td>)}
+        <td className="p-2"><div className="flex justify-center gap-0.5">{row.form.map((f,n)=><span key={n} className={`flex h-5 w-5 items-center justify-center rounded text-white font-bold ${f==='W'?'bg-emerald-600':f==='L'?'bg-red-600':'bg-amber-600'}`} aria-label={f==='W'?'Fitore':f==='L'?'Humbje':'Barazim'}>{f==='W'?'F':f==='L'?'H':'B'}</span>)}</div></td>
+      </tr>)}</tbody>
+    </table></div>
+    <p className="mt-2 text-xs text-slate-500">Rezultati pranë skuadrës tregon fillimisht golat e saj. Ngjyra gri tregon rezultat në pritje të konfirmimit.</p>
+  </section>;
+}
 function Info({m}:{m:ProtocolMatch}) {
   const refs=Object.entries(m.officials||{}).filter(([,value])=>value);
   const items=[{icon:CalendarDays,label:'Data dhe ora',value:[formatDate(m.matchDate),m.startTime].filter(Boolean).join(' · ')},{icon:MapPin,label:'Palestra dhe qyteti',value:[m.venue,m.city].filter(Boolean).join(' · ')}].filter(x=>x.value);
@@ -129,7 +156,7 @@ function Info({m}:{m:ProtocolMatch}) {
   </div>;
 }
 function TeamMark({logo}:{logo?:string}) {return <span className="flex h-6 w-6 shrink-0 items-center justify-center">{logo?<img src={logo} alt="" className="h-6 w-6 object-contain"/>:<Shield className="h-4 w-4 text-slate-300" aria-hidden="true"/>}</span>}
-export default function ProtocolLiveMatches({matches}:{matches:ProtocolMatch[]}) {
+export default function ProtocolLiveMatches({matches,stale=false}:{matches:ProtocolMatch[];stale?:boolean}) {
   const {matches:portalMatches,getTeamById}=useData();
   const [openId,setOpenId]=useState<string|null>(null),[activeTab,setActiveTab]=useState<Tab>('summary');
   const groups=useMemo(()=>{const out=new Map<string,ProtocolMatch[]>();for(const match of matches){const key=match.competition||'Ndeshje';out.set(key,[...(out.get(key)||[]),match]);}return [...out.entries()];},[matches]);
@@ -148,7 +175,7 @@ export default function ProtocolLiveMatches({matches}:{matches:ProtocolMatch[]})
         {open&&<div id={`protocol-details-${m.id}`} className="bg-white text-slate-900 border-t border-slate-200">
           <div className="px-4 sm:px-6 pt-3 pb-1 flex items-center justify-between gap-3 text-sm text-slate-600"><span>DETAJET E NDESHJES</span><span className="font-semibold text-slate-700">{phases[m.phase]||'Ndeshja'}</span></div>
           <nav aria-label="Detajet e ndeshjes" className="flex border-b border-slate-200 px-2 sm:px-4">{tabs.map(tab=><button key={tab.id} type="button" aria-pressed={activeTab===tab.id} onClick={()=>setActiveTab(tab.id)} className={`min-h-11 flex-1 px-1 sm:px-4 text-sm font-semibold border-b-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 ${activeTab===tab.id?'text-rose-700 border-rose-600':'text-slate-600 border-transparent hover:text-slate-900'}`}>{tab.label}</button>)}</nav>
-          {activeTab==='summary'?<><MatchCourt m={m} homeLogo={home?.logo} awayLogo={away?.logo}/><EventList m={m}/></>:activeTab==='lineups'?<Lineups m={m}/>:<Info m={m}/>}
+          {activeTab==='summary'?<><MatchCourt m={m} homeLogo={home?.logo} awayLogo={away?.logo}/><EventList m={m}/></>:activeTab==='lineups'?<Lineups m={m}/>:activeTab==='standings'?<LiveStandings match={m} protocols={matches} stale={stale}/>:<Info m={m}/>}
         </div>}
       </article>;
     })}
