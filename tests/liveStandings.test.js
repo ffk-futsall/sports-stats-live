@@ -31,3 +31,9 @@ test('portal-only live score and latest report work; position change follows sta
  const old={...report('m','first','0','2'),updatedAt:'1'},fresh={...report('m','first','2','0'),updatedAt:'2'};
  rows=calculateLiveStandings(teams,matches,[fresh,old],'liga');assert.equal(get(rows,'A').points,3);assert.equal(get(rows,'B').liveResults[0].score,'0:2');assert.ok(get(rows,'B').positionChange<0);
 });
+
+test('protocol results are merged chronologically into the last-five form',()=>{
+ const matches=[match('official','A','C',{status:'finished',homeScore:2,awayScore:0,date:'2026-09-01'}),match('earlier','A','B',{date:'2026-10-01'}),match('later','A','B',{date:'2026-11-01'})];
+ const reports=[report('earlier','finished','1','1'),report('later','finished','3','1')];
+ const row=get(calculateLiveStandings(teams,matches,reports,'liga'),'A');assert.deepEqual(row.form,['W','D','W']);assert.equal(row.points,7);
+});

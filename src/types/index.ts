@@ -53,6 +53,8 @@ export interface Match {
   homeScore?: number;
   awayScore?: number;
   status: MatchStatus;
+  /** Presentation-only result derived from a published protocol; never persisted as an official result. */
+  protocolResult?: 'live' | 'finished';
   isFeaturedLanding: boolean;
   referee1?: string;
   referee2?: string;

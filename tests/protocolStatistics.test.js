@@ -21,3 +21,5 @@ test('missing and malformed scores use recorded non-shootout goals, preserving z
  assert.deepEqual(values(protocolStatistics({...match,scores:{live:{a:'0',b:'0'}}},'match'))[0],[0,0]);
  assert.deepEqual(values(protocolStatistics({scores:{},events:[],goals:[]},'second')),[[0,0],[0,0],[0,0],[0,0],[0,0]]);
 });
+
+test('finished match goals use the final score rather than an older live score',()=>{const r=protocolStatistics({...match,phase:'finished',scores:{...match.scores,final:{a:'3',b:'2'}}},'match');assert.deepEqual(values(r)[0],[3,2]);});
