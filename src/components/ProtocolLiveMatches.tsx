@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronDown, CircleDot, MapPin, CalendarDays, UserRound, ArrowRightLeft, Flag, Shield } from 'lucide-react';
 import { useData } from '@/context/DataContext';
+import { LiveTeamIndicators } from '@/components/LiveStandingIndicators';
 
 type Side = 'a' | 'b';
 type Score = { a: string; b: string };
@@ -137,12 +138,12 @@ function LiveStandings({match,stale}:{match:ProtocolMatch;stale:boolean}) {
       <thead className="bg-slate-100 text-slate-600"><tr><th className="p-2">#</th><th className="p-2">Skuadra / rezultati</th><th className="p-2 text-center" title="Ndeshje">ND</th><th className="p-2 text-center" title="Fitore">F</th><th className="p-2 text-center" title="Barazime">B</th><th className="p-2 text-center" title="Humbje">H</th><th className="p-2 text-center" title="Golat e shënuar dhe të pranuar">G</th><th className="p-2 text-center" title="Goldallimi">DG</th><th className="p-2 text-center" title="Pikë">P</th><th className="p-2 text-center">Forma</th></tr></thead>
       <tbody className="divide-y divide-slate-100">{rows.map((row,i)=><tr key={row.teamId} className={row.liveResults.length?'bg-sky-50':'bg-white'}>
         <td className="p-2 font-bold">{i+1}</td>
-        <td className="p-2"><div className="flex items-center gap-1.5"><TeamMark logo={row.teamLogo}/><span className="font-semibold text-slate-900 whitespace-nowrap">{row.teamName}</span>{row.positionChange!==0&&<span className={row.positionChange>0?'text-emerald-700':'text-red-700'} aria-label={row.positionChange>0?`U ngrit ${row.positionChange} pozita`:`Ra ${-row.positionChange} pozita`}>{row.positionChange>0?'▲':'▼'}</span>}{row.liveResults.map(result=><span key={result.matchId} title={result.provisional?'Rezultat në pritje të konfirmimit zyrtar':'Rezultat live nga këndvështrimi i skuadrës'} className={`rounded px-1.5 py-0.5 font-bold text-white ${result.provisional?'bg-slate-500':result.result==='win'?'bg-emerald-600':result.result==='loss'?'bg-red-600':'bg-amber-600'}`}>{result.score}</span>)}</div></td>
+        <td className="p-2"><div className="flex items-center gap-1.5"><TeamMark logo={row.teamLogo}/><span className="font-semibold text-slate-900 whitespace-nowrap">{row.teamName}</span><LiveTeamIndicators row={row}/></div></td>
         {[row.played,row.won,row.drawn,row.lost,`${row.goalsFor}:${row.goalsAgainst}`,row.goalDifference,row.points].map((value,n)=><td key={n} className={`p-2 text-center ${row.liveResults.length?'font-semibold text-rose-700':'text-slate-700'} ${n===6?'font-bold':''}`}>{value}</td>)}
         <td className="p-2"><div className="flex justify-center gap-0.5">{row.form.map((f,n)=><span key={n} className={`flex h-5 w-5 items-center justify-center rounded text-white font-bold ${f==='W'?'bg-emerald-600':f==='L'?'bg-red-600':'bg-amber-600'}`} aria-label={f==='W'?'Fitore':f==='L'?'Humbje':'Barazim'}>{f==='W'?'F':f==='L'?'H':'B'}</span>)}</div></td>
       </tr>)}</tbody>
     </table></div>
-    <p className="mt-2 text-xs text-slate-500">Rezultati pranë skuadrës tregon fillimisht golat e saj. Ngjyra gri tregon rezultat në pritje të konfirmimit.</p>
+    <p className="mt-2 text-xs text-slate-500">Rezultati live pranë skuadrës tregon fillimisht golat e saj.</p>
   </section>;
 }
 function Info({m}:{m:ProtocolMatch}) {
