@@ -2,7 +2,7 @@
 import { useData } from '@/context/DataContext';
 import MatchDetailModal from './MatchDetailModal';
 import MatchVoteWidget from './MatchVoteWidget';
-import ProtocolLiveMatches, { ProtocolMatch } from './ProtocolLiveMatches';
+import ProtocolLiveMatches from './ProtocolLiveMatches';
 import { Match } from '@/types';
 type TabType = 'upcoming' | 'live' | 'finished';
 
@@ -18,36 +18,10 @@ interface LandingMatchesProps {
 }
 
 const LandingMatches: React.FC<LandingMatchesProps> = ({ initialTab = 'upcoming' }) => {
-  const { matches, competitions, getActiveSeason, getTeamById, settings } = useData();
+  const { matches, competitions, getActiveSeason, getTeamById, settings, protocolMatches, protocolError } = useData();
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const activeSeason = getActiveSeason();
-  const [protocolMatches,setProtocolMatches] = useState<ProtocolMatch[]>([]);
-  const [protocolError,setProtocolError] = useState(false);
-  useEffect(() => {
-    let active=true, inFlight=false, failures=0;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let controller: AbortController | undefined;
-    const schedule=(ms:number)=>{clearTimeout(timer);timer=setTimeout(load,ms)};
-    const load=async()=>{
-      if(!active || document.hidden || inFlight)return;
-      inFlight=true;controller=new AbortController();
-      try {
-        const response=await fetch('/api/protocol-live',{signal:controller.signal});
-        if(!response.ok)throw new Error('Live unavailable');
-        const data=await response.json();
-        if(active){setProtocolMatches(Array.isArray(data.matches)?data.matches:[]);setProtocolError(false);failures=0}
-      } catch(e) {
-        if(active && (e as Error).name!=='AbortError'){setProtocolError(true);failures++}
-      } finally {
-        inFlight=false;
-        if(active&&!document.hidden)schedule(failures?Math.min(60000,10000*2**Math.min(failures,3)):activeTab==='live'?10000:60000);
-      }
-    };
-    const visibility=()=>{clearTimeout(timer);if(document.hidden)controller?.abort();else load()};
-    document.addEventListener('visibilitychange',visibility);load();
-    return()=>{active=false;clearTimeout(timer);controller?.abort();document.removeEventListener('visibilitychange',visibility)};
-  },[activeTab]);
   const publishedIds = useMemo(()=>new Set(protocolMatches.map(m=>m.portalMatchId)),[protocolMatches]);
 
   const seasonMatches = useMemo(() =>

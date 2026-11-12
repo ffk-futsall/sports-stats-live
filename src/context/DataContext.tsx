@@ -10,7 +10,9 @@ import {
 import { dbVideos, dbNews, dbNormativeActs
 } from '@/lib/supabase-db';
 import { notificationService } from '@/lib/notifications';
-import { calculateLeagueStandings } from '@/lib/standings';
+import { calculateLeagueStandings, calculateLiveStandings } from '@/lib/standings';
+import type { LiveStandingsRow } from '@/lib/standings';
+import type { ProtocolMatch } from '@/components/ProtocolLiveMatches';
 
 // CACHE DISABLED: blloko shkrimet e localStorage per cache te madh
 if (typeof window !== 'undefined') {
@@ -91,6 +93,9 @@ function mapRealtimeRow(row: any): any {
 
 interface DataContextType extends DataState {
   isLoading: boolean;
+  protocolMatches: ProtocolMatch[];
+  protocolError: boolean;
+  protocolLoading: boolean;
   // Seasons
   addSeason: (s: Omit<Season, 'id'>) => string;
   updateSeason: (s: Season) => void;
@@ -147,7 +152,7 @@ interface DataContextType extends DataState {
   updateShortiSuperliga: (rubrikat: ShortiRubrik[]) => void;
   updateShortiLigaPare: (rubrikat: ShortiRubrik[]) => void;
   // Standings
-  calculateStandings: (compId: string) => StandingsRow[];
+  calculateStandings: (compId: string) => LiveStandingsRow[];
   // Aggregated scorers
   getAggregatedScorers: (compId?: string) => { firstName: string; lastName: string; photo: string; teamId: string; goals: number; id: string; competitionId: string }[];
   // Head to head
@@ -178,6 +183,36 @@ export const useData = () => {
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<DataState>(initialState);
   const [isLoading, setIsLoading] = useState(true);
+  const [protocolMatches, setProtocolMatches] = useState<ProtocolMatch[]>([]);
+  const [protocolError, setProtocolError] = useState(false);
+  const [protocolLoading, setProtocolLoading] = useState(true);
+
+  // One shared live feed for every table and match detail, paused in hidden tabs.
+  useEffect(() => {
+    let active=true, inFlight=false, failures=0;
+    let timer:ReturnType<typeof setTimeout>|undefined;
+    let controller:AbortController|undefined;
+    const schedule=(delay:number)=>{clearTimeout(timer);timer=setTimeout(load,delay)};
+    const load=async()=>{
+      if(!active || document.hidden || inFlight)return;
+      inFlight=true;controller=new AbortController();
+      try {
+        const response=await fetch('/api/protocol-live',{signal:controller.signal});
+        if(!response.ok)throw new Error('Live unavailable');
+        const data=await response.json();
+        if(!Array.isArray(data.matches))throw new Error('Invalid live data');
+        if(active){setProtocolMatches(data.matches);setProtocolError(false);setProtocolLoading(false);failures=0;}
+      } catch(error) {
+        if(active && (error as Error).name!=='AbortError'){setProtocolError(true);setProtocolLoading(false);failures++;}
+      } finally {
+        inFlight=false;
+        if(active&&!document.hidden)schedule(failures?Math.min(60000,10000*2**Math.min(failures,3)):10000);
+      }
+    };
+    const visibility=()=>{clearTimeout(timer);if(document.hidden)controller?.abort();else load();};
+    document.addEventListener('visibilitychange',visibility);load();
+    return()=>{active=false;clearTimeout(timer);controller?.abort();document.removeEventListener('visibilitychange',visibility);};
+  },[]);
   const stateRef = useRef(state);
   const hasHydratedRef = useRef(false);
   stateRef.current = state;
@@ -795,7 +830,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // ============ STANDINGS ============
-  const calculateStandings = (compId: string): StandingsRow[] => calculateLeagueStandings(state.teams, state.matches, compId);
+  const calculateStandings = (compId: string): LiveStandingsRow[] => {
+    const competition=state.competitions.find(c=>c.id===compId);
+    // Cup ties do not contribute to league tables.
+    if(competition?.type==='kupa')return calculateLeagueStandings(state.teams,state.matches,compId).map(row=>({...row,liveResults:[],positionChange:0}));
+    return calculateLiveStandings(state.teams,state.matches,protocolMatches,compId);
+  };
 
   // ============ HEAD TO HEAD ============
   const getHeadToHead = (teamAId: string, teamBId: string) => {
@@ -881,7 +921,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const value: DataContextType = {
     ...state,
-    isLoading,
+    isLoading, protocolMatches, protocolError, protocolLoading,
     addSeason, updateSeason, deleteSeason, getActiveSeason,
     addCompetition, updateCompetition, deleteCompetition,
     addTeam, updateTeam, deleteTeam, clearAllTeams, getTeamById, getTeamsByCompetition,
