@@ -44,3 +44,9 @@ test('protected match fields require weekly password after match editor closes, 
 test('dashboard returns phase but not private draft details',async()=>{
  listRows=[{id,state:'accepted',draft:{phase:'finished',signatures:{delegate:'private'},teams:{a:{idNumber:'secret'}}}}];let r=mockRes();await handler(req('GET'),r);assert.equal(r.statusCode,200);assert.equal(r.body.assignments[0].phase,'finished');assert.equal('draft' in r.body.assignments[0],false);assert.equal(JSON.stringify(r.body).includes('secret'),false);listRows=[];
 });
+
+test('JSON object key order does not block normal live updates',async()=>{
+ currentDraft={phase:'first',round:'10',teams:{a:{name:'A',kit:{shirt:'red',socks:'blue'}},b:{name:'B'}},officials:{ref1:'Ref',delegate:'D'}};
+ const reordered={phase:'second',round:'10',teams:{b:{name:'B'},a:{kit:{socks:'blue',shirt:'red'},name:'A'}},officials:{delegate:'D',ref1:'Ref'}};
+ let r=mockRes();await handler(req('PUT',{id,version:0,published:false,draft:reordered}),r);assert.equal(r.statusCode,200);currentDraft=null;
+});

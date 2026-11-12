@@ -9,7 +9,12 @@ function validEditPassword(password,details){
   return /^\d+$/.test(round) && Number(round)>0 && typeof password==='string' && password===`ffkfutsall${round}`;
 }
 const protectedFields=['round','competition','cupStage','season','matchDate','startTime','venue','city','organization','organizationNote','securityName','securityId','attendance','teams','officials'];
-function protectedChanged(before,after){return protectedFields.some(key=>JSON.stringify(before?.[key]??null)!==JSON.stringify(after?.[key]??null));}
+function canonical(value){
+  if(Array.isArray(value))return value.map(canonical);
+  if(value && typeof value==='object')return Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])]));
+  return value;
+}
+function protectedChanged(before,after){return protectedFields.some(key=>JSON.stringify(canonical(before?.[key]??null))!==JSON.stringify(canonical(after?.[key]??null)));}
 function editingLocked(draft){return draft?._editLocked===true || (!!draft?.phase && draft.phase!=='setup');}
 function cors(req,res) {
   const allowed=process.env.PROTOCOL_ORIGIN;
