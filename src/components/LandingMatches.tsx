@@ -18,11 +18,22 @@ interface LandingMatchesProps {
 }
 
 const LandingMatches: React.FC<LandingMatchesProps> = ({ initialTab = 'upcoming' }) => {
-  const { matches, competitions, getActiveSeason, getTeamById, settings, protocolMatches, protocolError } = useData();
+  const { matches:portalMatches, displayMatches:matches, competitions, getActiveSeason, getTeamById, settings, protocolMatches, protocolError } = useData();
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const activeSeason = getActiveSeason();
-  const publishedIds = useMemo(()=>new Set(protocolMatches.map(m=>m.portalMatchId)),[protocolMatches]);
+  const displayedProtocols = useMemo(()=>{
+    const latest=new Map<string,typeof protocolMatches[number]>();
+    for(const p of protocolMatches){
+      const key=p.portalMatchId||p.id, old=latest.get(key);
+      if(!old||(p.updatedAt||'')>(old.updatedAt||''))latest.set(key,p);
+    }
+    return [...latest.values()].filter(p=>{
+      const portal=portalMatches.find(m=>m.id===p.portalMatchId);
+      return portal?.status!=='cancelled' && (activeTab==='live'?p.phase!=='finished':activeTab==='finished'?p.phase==='finished' && portal?.status!=='finished':false);
+    });
+  },[protocolMatches,portalMatches,activeTab]);
+  const publishedIds = useMemo(()=>new Set(displayedProtocols.map(m=>m.portalMatchId).filter(Boolean)),[displayedProtocols]);
 
   const seasonMatches = useMemo(() =>
     activeSeason ? matches.filter(m => m.seasonId === activeSeason.id) : matches,
@@ -51,7 +62,7 @@ const LandingMatches: React.FC<LandingMatchesProps> = ({ initialTab = 'upcoming'
       const fin = filtered.filter(m => m.status === 'finished');
       if (fin.length === 0) return { matches: [] };
       const maxWeek = Math.max(...fin.map(m => m.week || 0));
-      return { matches: fin.filter(m => m.week === maxWeek).sort((a, b) => (b.date || '').localeCompare(a.date || '')), week: maxWeek };
+      return { matches: fin.filter(m => m.week === maxWeek && !publishedIds.has(m.id)).sort((a, b) => (b.date || '').localeCompare(a.date || '')), week: maxWeek };
     }
     if (status === 'planned') {
       const pl = filtered.filter(m => m.status === 'planned').sort((a, b) => (a.date || '').localeCompare(b.date || ''));
@@ -74,7 +85,8 @@ const LandingMatches: React.FC<LandingMatchesProps> = ({ initialTab = 'upcoming'
   const hasAny = superligaMatches.length > 0 || ligaPareMatches.length > 0 || kupaMatches.length > 0;
   const unavailableEmpty = activeTab === 'live' && protocolError && protocolMatches.length === 0 && !hasAny;
 
-  const liveCount = seasonMatches.filter(m => m.status === 'live' && !publishedIds.has(m.id)).length + protocolMatches.filter(m=>m.phase!=='finished').length;
+  const liveIds=new Set(protocolMatches.filter(m=>!['finished','setup'].includes(m.phase)).map(m=>m.portalMatchId||m.id));
+  const liveCount = seasonMatches.filter(m => m.status === 'live' && !liveIds.has(m.id)).length + liveIds.size;
 
   const tabs: { key: TabType; label: string }[] = [
     { key: 'live', label: 'Live' },
@@ -136,6 +148,7 @@ const LandingMatches: React.FC<LandingMatchesProps> = ({ initialTab = 'upcoming'
           </div>
         </div>
 
+        {match.protocolResult==='finished'&&<div className="px-4 pt-2 text-xs text-amber-800">Përfunduar në procesverbal · përkohshëm</div>}
         {/* Main row: home - score - away */}
         <div className="flex items-center justify-between pl-4 pr-4 py-4">
           {/* Home */}
@@ -154,9 +167,9 @@ const LandingMatches: React.FC<LandingMatchesProps> = ({ initialTab = 'upcoming'
           <div className="flex items-center gap-1 px-3 min-w-[70px] justify-center">
             {isFinished || isLive ? (
               <>
-                <span className={`text-2xl font-black tabular-nums w-7 text-right ${isLive ? 'text-red-500' : 'text-gray-900'}`}>{match.homeScore ?? 0}</span>
+                <span className={`text-2xl font-black tabular-nums w-7 text-right ${isLive ? 'text-red-500' : 'text-gray-900'}`}>{match.homeScore ?? '—'}</span>
                 <span className="text-sm font-light text-gray-300 mx-0.5">:</span>
-                <span className={`text-2xl font-black tabular-nums w-7 text-left ${isLive ? 'text-red-500' : 'text-gray-900'}`}>{match.awayScore ?? 0}</span>
+                <span className={`text-2xl font-black tabular-nums w-7 text-left ${isLive ? 'text-red-500' : 'text-gray-900'}`}>{match.awayScore ?? '—'}</span>
               </>
             ) : (
               <span className="text-sm font-bold text-[#0f1830] bg-[#0f1830]/10 px-2.5 py-1 rounded-lg">{match.time || 'VS'}</span>
@@ -251,20 +264,20 @@ const LandingMatches: React.FC<LandingMatchesProps> = ({ initialTab = 'upcoming'
             })}
           </div>
         </div>
-        {activeTab === 'live' && protocolError && <p role="alert" className="mb-4 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 p-3 text-sm">Përditësimi live nuk është i disponueshëm; të dhënat mund të jenë të vjetra.</p>}
-        {activeTab === 'live' && <ProtocolLiveMatches matches={protocolMatches} stale={protocolError} />}
-        {!unavailableEmpty && !(activeTab === 'live' && protocolMatches.length && !superligaMatches.length) && <MatchGrid matchList={superligaMatches} title="Superliga e Kosoves" week={superligaData.week} />}
-        {!unavailableEmpty && !(activeTab === 'live' && protocolMatches.length && !ligaPareMatches.length) && <MatchGrid matchList={ligaPareMatches} title="Liga e Pare" week={ligaPareData.week} />}
-        {!unavailableEmpty && !(activeTab === 'live' && protocolMatches.length && !kupaMatches.length) && <MatchGrid matchList={kupaMatches} title="Kupa e Kosoves" week={kupaData.week} isKupa />}
+        {activeTab !== 'upcoming' && protocolError && <p role="alert" className="mb-4 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 p-3 text-sm">Përditësimi live nuk është i disponueshëm; të dhënat mund të jenë të vjetra.</p>}
+        {activeTab !== 'upcoming' && <ProtocolLiveMatches matches={displayedProtocols} stale={protocolError} />}
+        {!unavailableEmpty && !(activeTab !== 'upcoming' && displayedProtocols.length && !superligaMatches.length) && <MatchGrid matchList={superligaMatches} title="Superliga e Kosoves" week={superligaData.week} />}
+        {!unavailableEmpty && !(activeTab !== 'upcoming' && displayedProtocols.length && !ligaPareMatches.length) && <MatchGrid matchList={ligaPareMatches} title="Liga e Pare" week={ligaPareData.week} />}
+        {!unavailableEmpty && !(activeTab !== 'upcoming' && displayedProtocols.length && !kupaMatches.length) && <MatchGrid matchList={kupaMatches} title="Kupa e Kosoves" week={kupaData.week} isKupa />}
 
-        {!unavailableEmpty && !hasAny && !(activeTab === 'live' && protocolMatches.length > 0) && (
+        {!unavailableEmpty && !hasAny && !(activeTab !== 'upcoming' && displayedProtocols.length > 0) && (
           <div className="text-center py-10">
             <p className="text-gray-400 text-sm">Nuk ka ndeshje per kete kategori.</p>
           </div>
         )}
       </div>
 
-      <MatchDetailModal match={selectedMatch} onClose={() => setSelectedMatch(null)} />
+      <MatchDetailModal match={selectedMatch ? matches.find(m=>m.id===selectedMatch.id)||selectedMatch : null} onClose={() => setSelectedMatch(null)} />
     </section>
   );
 };
