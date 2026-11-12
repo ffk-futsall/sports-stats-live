@@ -18,7 +18,8 @@ export function protocolStatistics(match:ProtocolMatch, period:StatisticsPeriod)
   const events=match.events||[], goals=match.goals||[];
   const within=(p?:string)=>period==='match'||statisticPeriod(p)===period;
   const goalsFor=(side:Side)=>{
-    const score=period==='match'?match.scores?.live:match.scores?.[period];
+    const final=match.scores?.final;
+    const score=period==='match'?(match.phase==='finished' && number(final?.a)!==null && number(final?.b)!==null ? final : match.scores?.live):match.scores?.[period];
     const recorded=number(score?.[side]);
     return recorded ?? goals.filter(g=>g.team===side && statisticPeriod(g.period)!=='penalties' && within(g.period)).length;
   };
@@ -32,7 +33,8 @@ export function protocolStatistics(match:ProtocolMatch, period:StatisticsPeriod)
   ];
   const unknownPeriod=events.some(e=>['foul','card','timeout'].includes(e.kind) && ['a','b'].includes(e.team) && statisticPeriod(e.period)==='unknown');
   const unknownCard=events.some(e=>e.kind==='card' && ['a','b'].includes(e.team) && !/^(kv|kk)/i.test(e.sourceRow||''));
-  const score=period==='match'?match.scores?.live:match.scores?.[period];
+  const final=match.scores?.final;
+  const score=period==='match'?(match.phase==='finished' && number(final?.a)!==null && number(final?.b)!==null ? final : match.scores?.live):match.scores?.[period];
   const goalFallback=(['a','b'] as Side[]).some(side=>number(score?.[side])===null);
   return {rows,unknownPeriod,unknownCard,goalFallback};
 }

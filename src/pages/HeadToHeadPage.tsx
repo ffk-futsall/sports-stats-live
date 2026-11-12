@@ -10,7 +10,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 const HeadToHeadPage: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const { teams, getHeadToHead, getTeamById, getActiveSeason } = useData();
+  const { teams, displayMatches, getHeadToHead, getTeamById, getActiveSeason, protocolError } = useData();
   const activeSeason = getActiveSeason();
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
 
@@ -24,6 +24,7 @@ const HeadToHeadPage: React.FC = () => {
     return getHeadToHead(teamAId, teamBId);
   }, [teamAId, teamBId, getHeadToHead]);
 
+  const liveMeetings=displayMatches.filter(m=>m.status==='live' && ((m.homeTeamId===teamAId&&m.awayTeamId===teamBId)||(m.homeTeamId===teamBId&&m.awayTeamId===teamAId)));
   const teamA = getTeamById(teamAId);
   const teamB = getTeamById(teamBId);
 
@@ -81,7 +82,7 @@ const HeadToHeadPage: React.FC = () => {
                 </div>
                 <div className="text-center px-6">
                   <span className="text-3xl font-bold">{h2h.teamAWins} - {h2h.draws} - {h2h.teamBWins}</span>
-                  <p className="text-xs text-[#0f1830]/25 mt-1">{h2h.matches.length} ndeshje totale</p>
+                  <p className="text-xs text-[#0f1830]/25 mt-1">{h2h.matches.length} ndeshje të përfunduara</p>
                 </div>
                 <div className="flex flex-col items-center flex-1">
                   <div className="w-20 h-20 rounded-full bg-white/10 overflow-hidden">
@@ -125,6 +126,8 @@ const HeadToHeadPage: React.FC = () => {
               </div>
             )}
 
+            <p className="mb-4 text-sm text-slate-600">Rezultatet e përfunduara nga procesverbali janë të përkohshme deri në konfirmimin në portal.{protocolError && ' Përditësimi live dështoi; të dhënat mund të jenë të vjetruara.'}</p>
+            {liveMeetings.length>0&&<div className="mb-6"><h3 className="text-lg font-semibold text-red-700 mb-4">Ndeshjet live</h3><div className="space-y-3">{liveMeetings.map(m=><MatchCard key={m.id} match={m} onClick={setSelectedMatch} compact/>)}</div></div>}
             {/* Match History */}
             {h2h.matches.length > 0 && (
               <div>
@@ -143,12 +146,12 @@ const HeadToHeadPage: React.FC = () => {
           <p className="text-gray-500 text-center py-12">Zgjedh dy skuadra për të parë krahasimin head-to-head.</p>
         )}
 
-        {teamAId && teamBId && h2h && h2h.matches.length === 0 && (
+        {teamAId && teamBId && h2h && h2h.matches.length === 0 && liveMeetings.length === 0 && (
           <p className="text-gray-500 text-center py-12">Nuk ka ndeshje direkte mes këtyre dy skuadrave.</p>
         )}
       </div>
       <div className="mt-auto"><Footer /></div>
-      <MatchDetailModal match={selectedMatch} onClose={() => setSelectedMatch(null)} />
+      <MatchDetailModal match={selectedMatch ? displayMatches.find(m=>m.id===selectedMatch.id)||selectedMatch : null} onClose={() => setSelectedMatch(null)} />
     </div>
   );
 };

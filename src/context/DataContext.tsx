@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Season, Competition, Team, Player, Match, Goal, Scorer, PlayerOfWeek, User, StandingsRow, AppSettings, Decision, Video, News, ShortiRubrik, NormativeAct } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -13,6 +13,8 @@ import { notificationService } from '@/lib/notifications';
 import { calculateLeagueStandings, calculateLiveStandings } from '@/lib/standings';
 import type { LiveStandingsRow } from '@/lib/standings';
 import type { ProtocolMatch } from '@/components/ProtocolLiveMatches';
+import { mergeProtocolMatches } from '@/lib/protocolMatches';
+import { getHeadToHeadHistory } from '@/lib/matchHistory';
 
 // CACHE DISABLED: blloko shkrimet e localStorage per cache te madh
 if (typeof window !== 'undefined') {
@@ -94,6 +96,7 @@ function mapRealtimeRow(row: any): any {
 interface DataContextType extends DataState {
   isLoading: boolean;
   protocolMatches: ProtocolMatch[];
+  displayMatches: Match[];
   protocolError: boolean;
   protocolLoading: boolean;
   // Seasons
@@ -839,31 +842,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // ============ HEAD TO HEAD ============
   const getHeadToHead = (teamAId: string, teamBId: string) => {
-    const h2hMatches = state.matches.filter(m =>
-      m.status === 'finished' &&
-      ((m.homeTeamId === teamAId && m.awayTeamId === teamBId) ||
-       (m.homeTeamId === teamBId && m.awayTeamId === teamAId))
-    );
-    let teamAWins = 0, teamBWins = 0, draws = 0, teamAGoals = 0, teamBGoals = 0;
-    h2hMatches.forEach(m => {
-      const hs = m.homeScore ?? 0;
-      const as_ = m.awayScore ?? 0;
-      if (m.homeTeamId === teamAId) {
-        teamAGoals += hs; teamBGoals += as_;
-        if (hs > as_) teamAWins++;
-        else if (hs < as_) teamBWins++;
-        else draws++;
-      } else {
-        teamAGoals += as_; teamBGoals += hs;
-        if (as_ > hs) teamAWins++;
-        else if (as_ < hs) teamBWins++;
-        else draws++;
-      }
-    });
-    return { matches: h2hMatches, teamAWins, teamBWins, draws, teamAGoals, teamBGoals };
+    const h = getHeadToHeadHistory(mergeProtocolMatches(state.matches,protocolMatches),teamAId,teamBId);
+    return { matches: h.meetings, teamAWins:h.teamAWins, teamBWins:h.teamBWins, draws:h.draws, teamAGoals:h.teamAGoals, teamBGoals:h.teamBGoals };
   };
 
-  
   // ============ NORMATIVE ACTS ============
   const addNormativeAct = (a: Omit<NormativeAct, 'id'>) => {
     const item = { ...a, id: uuidv4(), createdAt: new Date().toISOString() };
@@ -919,9 +901,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshData = loadData;
 
+  const displayMatches = useMemo(() => mergeProtocolMatches(state.matches,protocolMatches), [state.matches,protocolMatches]);
+
   const value: DataContextType = {
     ...state,
-    isLoading, protocolMatches, protocolError, protocolLoading,
+    isLoading, protocolMatches, displayMatches, protocolError, protocolLoading,
     addSeason, updateSeason, deleteSeason, getActiveSeason,
     addCompetition, updateCompetition, deleteCompetition,
     addTeam, updateTeam, deleteTeam, clearAllTeams, getTeamById, getTeamsByCompetition,
