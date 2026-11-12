@@ -25,7 +25,7 @@ interface Tie {
 }
 
 const KupaPage: React.FC = () => {
-  const { competitions, matches, getActiveSeason, getTeamById, getAggregatedScorers, getGoalsByMatch } = useData();
+  const { competitions, displayMatches:matches, getActiveSeason, getTeamById, getAggregatedScorers, getGoalsByMatch, protocolError } = useData();
   const activeSeason = getActiveSeason();
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [activeTab, setActiveTab] = useState<'bracket' | 'golashenuesit'>('bracket');
@@ -72,7 +72,7 @@ const KupaPage: React.FC = () => {
           let allFinished = true;
 
           relatedLegs.forEach(leg => {
-            if (leg.status !== 'finished') { allFinished = false; return; }
+            if (leg.status !== 'finished' || leg.homeScore == null || leg.awayScore == null) { allFinished = false; return; }
             let goalsA = 0, goalsB = 0;
             if (leg.homeTeamId === teamA) {
               goalsA = leg.homeScore ?? 0;
@@ -145,7 +145,7 @@ const KupaPage: React.FC = () => {
               <span className="text-xs font-semibold text-gray-800 truncate">{home?.name || 'TBD'}</span>
             </div>
             <span className={`text-sm font-black tabular-nums ${isFinished || isLive ? 'text-gray-900' : 'text-gray-300'}`}>
-              {isFinished || isLive ? (match.homeScore ?? 0) : '-'}
+              {isFinished || isLive ? (match.homeScore ?? '—') : '-'}
             </span>
           </div>
           <div className="flex items-center justify-between">
@@ -156,7 +156,7 @@ const KupaPage: React.FC = () => {
               <span className="text-xs font-semibold text-gray-800 truncate">{away?.name || 'TBD'}</span>
             </div>
             <span className={`text-sm font-black tabular-nums ${isFinished || isLive ? 'text-gray-900' : 'text-gray-300'}`}>
-              {isFinished || isLive ? (match.awayScore ?? 0) : '-'}
+              {isFinished || isLive ? (match.awayScore ?? '—') : '-'}
             </span>
           </div>
           <div className="mt-1 text-center">
@@ -173,6 +173,7 @@ const KupaPage: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 py-5">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Kupa e Kosoves</h1>
+          {protocolError && <p role="status" className="mt-2 text-sm text-amber-800">Përditësimi i procesverbaleve dështoi; rezultatet mund të jenë të vjetruara ose të mungojnë.</p>}
           <p className="text-gray-400 text-sm mt-1">Sezoni {activeSeason?.name || ''}</p>
         </div>
 
@@ -313,7 +314,7 @@ const KupaPage: React.FC = () => {
         )}
       </div>
       <div className="mt-auto"><Footer /></div>
-      <MatchDetailModal match={selectedMatch} onClose={() => setSelectedMatch(null)} />
+      <MatchDetailModal match={selectedMatch ? matches.find(m=>m.id===selectedMatch.id)||selectedMatch : null} onClose={() => setSelectedMatch(null)} />
     </div>
   );
 };

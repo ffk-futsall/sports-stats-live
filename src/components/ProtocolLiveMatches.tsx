@@ -161,14 +161,14 @@ function LiveStandings({match,stale}:{match:ProtocolMatch;stale:boolean}) {
     <p className="mt-2 text-xs text-slate-500">Rezultati live pranë skuadrës tregon fillimisht golat e saj.</p>
   </section>;
 }
-function HistoryRow({match}:{match:Match}) {
+function HistoryRow({match,minimal=false}:{match:Match;minimal?:boolean}) {
   const {getTeamById,competitions}=useData();
   const home=getTeamById(match.homeTeamId)?.name || 'Skuadër e panjohur';
   const away=getTeamById(match.awayTeamId)?.name || 'Skuadër e panjohur';
   const competition=competitions.find(c=>c.id===match.competitionId)?.name;
   const date=match.date ? formatDate(match.date) : 'Data nuk është caktuar';
   return <li className="py-3 border-b last:border-0 border-slate-100">
-    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500"><span>{[date, match.time, competition].filter(Boolean).join(' · ')}</span>{match.status==='live'&&<span className="font-bold text-red-700">LIVE</span>}{match.protocolResult==='finished'&&<span className="font-semibold text-amber-800">Përfunduar · procesverbal (përkohshëm)</span>}</div>
+    {!minimal&&<div className="flex flex-wrap items-center gap-2 text-xs text-slate-500"><span>{[date, match.time, competition].filter(Boolean).join(' · ')}</span>{match.status==='live'&&<span className="font-bold text-red-700">LIVE</span>}{match.protocolResult==='finished'&&<span className="font-semibold text-amber-800">Përfunduar · procesverbal (përkohshëm)</span>}</div>}
     <div className="mt-1.5 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-sm"><span className="font-semibold text-slate-800 break-words">{home}</span><strong className="rounded bg-slate-100 px-2 py-1 text-slate-900 tabular-nums whitespace-nowrap" aria-label="Rezultati">{['finished','live'].includes(match.status)&&hasResult(match)?`${match.homeScore} : ${match.awayScore}`:'— : —'}</strong><span className="font-semibold text-slate-800 text-right break-words">{away}</span></div>
   </li>;
 }
@@ -180,15 +180,8 @@ function History({match,mode}:{match:ProtocolMatch;mode:'h2h'|'matches'}) {
   if(mode==='h2h') {
     const h=getHeadToHeadHistory(matches,portal.homeTeamId,portal.awayTeamId);
     return <section className="p-4 sm:p-5" aria-label="Përballjet H2H">
-      <h3 className="text-base font-bold text-slate-900">Përballjet direkte</h3>
-      <p className="mt-1 text-xs text-slate-600">Statistikat llogariten nga ndeshjet e përfunduara me rezultat; ndeshjet live shfaqen veçmas. Rezultatet e procesverbalit janë të përkohshme deri në konfirmimin në portal.</p>
-      {protocolError&&<p role="status" className="mt-2 text-xs font-semibold text-red-700">Përditësimi live dështoi; të dhënat mund të jenë të vjetruara.</p>}
-      {h.meetings.length>0&&<><div className="mt-4 grid grid-cols-3 gap-2 text-center">
-        {[{name:match.teams.a.name,value:h.teamAWins,label:'Fitore'},{name:'Barazime',value:h.draws,label:'Barazime'},{name:match.teams.b.name,value:h.teamBWins,label:'Fitore'}].map((item,i)=><div key={i} className="rounded-lg bg-slate-50 px-2 py-3"><div className="text-xs font-semibold text-slate-600 break-words">{item.name}</div><div className="mt-1 text-xl font-bold text-slate-900 tabular-nums">{item.value}</div><div className="text-xs text-slate-500">{item.label}</div></div>)}
-      </div><p className="mt-3 text-center text-sm text-slate-700">{h.meetings.length} {h.meetings.length===1?'ndeshje e përfunduar':'ndeshje të përfunduara'} · Golat: <strong>{h.teamAGoals} : {h.teamBGoals}</strong></p></>}
-      {h.live.length>0&&<><h4 className="mt-5 text-sm font-bold text-red-700">Përballjet live</h4><ul>{h.live.map(m=><HistoryRow key={m.id} match={m}/>)}</ul></>}
-      {h.completed.length>0&&<><h4 className="mt-5 text-sm font-bold text-slate-900">Përballjet e përfunduara</h4><ul>{h.completed.slice(0,10).map(m=><HistoryRow key={m.id} match={m}/>)}</ul>{h.completed.length>10&&<p className="mt-2 text-xs text-slate-500">Shfaqen 10 përballjet e fundit.</p>}</>}
-      {!h.live.length&&!h.completed.length&&<p className="py-7 text-center text-sm text-slate-600">Nuk ka përballje live ose të përfunduara.</p>}
+      {protocolError&&<p role="status" className="text-xs font-semibold text-red-700">Përditësimi live dështoi; të dhënat mund të jenë të vjetruara.</p>}
+      <ul>{[...h.live,...h.completed].map(m=><HistoryRow key={m.id} match={m} minimal/>)}</ul>
     </section>;
   }
 
@@ -208,27 +201,31 @@ function Info({m}:{m:ProtocolMatch}) {
   </div>;
 }
 function TeamMark({logo}:{logo?:string}) {return <span className="flex h-6 w-6 shrink-0 items-center justify-center">{logo?<img src={logo} alt="" className="h-6 w-6 object-contain"/>:<Shield className="h-4 w-4 text-slate-300" aria-hidden="true"/>}</span>}
+export function ProtocolDetailsPanel({match:m,homeLogo,awayLogo,stale=false}:{match:ProtocolMatch;homeLogo?:string;awayLogo?:string;stale?:boolean}) {
+  const [activeTab,setActiveTab]=useState<Tab>('summary');
+  return <div className="bg-white text-slate-900">
+    <div className="px-4 sm:px-6 pt-3 pb-1 flex items-center justify-between gap-3 text-sm text-slate-600"><span>DETAJET E NDESHJES</span><span className="font-semibold text-slate-700">{phases[m.phase]||'Ndeshja'}</span></div>
+    <nav aria-label="Detajet e ndeshjes" className="grid grid-cols-4 sm:flex border-b border-slate-200 px-2 sm:px-4">{tabs.map(tab=><button key={tab.id} type="button" aria-pressed={activeTab===tab.id} onClick={()=>setActiveTab(tab.id)} className={`min-h-11 min-w-0 sm:flex-1 px-1 sm:px-2 text-xs sm:text-sm leading-tight font-semibold border-b-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 ${activeTab===tab.id?'text-rose-700 border-rose-600':'text-slate-600 border-transparent hover:text-slate-900'}`}>{tab.label}</button>)}</nav>
+    {activeTab==='summary'?<><MatchCourt m={m} homeLogo={homeLogo} awayLogo={awayLogo} stale={stale}/><EventList m={m}/></>:activeTab==='stats'?<Statistics m={m} stale={stale}/>:activeTab==='lineups'?<Lineups m={m}/>:activeTab==='standings'?<LiveStandings match={m} stale={stale}/>:activeTab==='h2h'?<History match={m} mode="h2h"/>:activeTab==='matches'?<History match={m} mode="matches"/>:<Info m={m}/>}
+  </div>;
+}
 export default function ProtocolLiveMatches({matches,stale=false}:{matches:ProtocolMatch[];stale?:boolean}) {
   const {matches:portalMatches,getTeamById}=useData();
-  const [openId,setOpenId]=useState<string|null>(null),[activeTab,setActiveTab]=useState<Tab>('summary');
+  const [openId,setOpenId]=useState<string|null>(null);
   const groups=useMemo(()=>{const out=new Map<string,ProtocolMatch[]>();for(const match of matches){const key=match.competition||'Ndeshje';out.set(key,[...(out.get(key)||[]),match]);}return [...out.entries()];},[matches]);
   if(!matches.length)return null;
   return <div className="mx-auto mb-6 w-full max-w-[760px] space-y-3" aria-label="Ndeshjet nga procesverbali">{groups.map(([competition,group])=><section key={competition} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
     <div className="flex items-center justify-between gap-3 bg-slate-100 px-4 py-2 sm:px-5"><h2 className="text-sm font-bold text-slate-800">{competition}</h2><span className="text-sm text-slate-500">{group.length} ndeshje</span></div>
     {group.map(m=>{const open=openId===m.id;const portal=portalMatches.find(x=>x.id===m.portalMatchId);const home=portal?getTeamById(portal.homeTeamId):undefined;const away=portal?getTeamById(portal.awayTeamId):undefined;const live=!['setup','finished'].includes(m.phase);const shownScore=m.phase==='finished'&&formatScore(m.scores.final)!=='—'?m.scores.final:m.scores.live;
       return <article key={m.id} className="border-t border-slate-200 first:border-0">
-        <button type="button" aria-expanded={open} aria-controls={`protocol-details-${m.id}`} onClick={()=>{setOpenId(open?null:m.id);setActiveTab('summary')}} className="w-full text-left px-3 sm:px-5 py-2 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 focus-visible:outline-offset-[-2px]">
+        <button type="button" aria-expanded={open} aria-controls={`protocol-details-${m.id}`} onClick={()=>setOpenId(open?null:m.id)} className="w-full text-left px-3 sm:px-5 py-2 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 focus-visible:outline-offset-[-2px]">
           <div className="grid grid-cols-[76px_minmax(0,1fr)_28px] sm:grid-cols-[135px_minmax(0,1fr)_32px] gap-2 sm:gap-4 items-center">
             <div className="self-center text-sm leading-4"><span className={`font-bold ${live?'text-red-600':'text-slate-600'}`}>{live&&<span aria-hidden="true" className="inline-block h-1.5 w-1.5 rounded-full bg-red-500 mr-1.5 align-middle"/>}{rowPhases[m.phase]||'Ndeshja'}</span>{m.round&&<div className="mt-1 text-slate-500">Java {m.round}</div>}{m.phase==='finished'&&portal?.status!=='finished'&&<div className="mt-1 text-xs text-amber-800">Përkohshëm</div>}</div>
             <div className="min-w-0 space-y-1">{(['a','b'] as Side[]).map((side)=><div key={side} className="flex items-center gap-2"><TeamMark logo={side==='a'?home?.logo:away?.logo}/><span className="min-w-0 flex-1 break-words text-sm font-semibold text-slate-800">{m.teams[side].name}</span><strong className="pl-2 text-base tabular-nums text-slate-900">{shownScore?.[side]!=='' && shownScore?.[side]!=null?shownScore[side]:'—'}</strong></div>)}</div>
             <ChevronDown aria-hidden="true" className={`justify-self-end h-5 w-5 text-slate-400 transition-transform motion-reduce:transition-none ${open?'rotate-180':''}`}/>
           </div><span className="sr-only">{open?'Mbyll':'Hap'} detajet e ndeshjes {m.teams.a.name} kundër {m.teams.b.name}</span>
         </button>
-        {open&&<div id={`protocol-details-${m.id}`} className="bg-white text-slate-900 border-t border-slate-200">
-          <div className="px-4 sm:px-6 pt-3 pb-1 flex items-center justify-between gap-3 text-sm text-slate-600"><span>DETAJET E NDESHJES</span><span className="font-semibold text-slate-700">{phases[m.phase]||'Ndeshja'}</span></div>
-          <nav aria-label="Detajet e ndeshjes" className="grid grid-cols-4 sm:flex border-b border-slate-200 px-2 sm:px-4">{tabs.map(tab=><button key={tab.id} type="button" aria-pressed={activeTab===tab.id} onClick={()=>setActiveTab(tab.id)} className={`min-h-11 min-w-0 sm:flex-1 px-1 sm:px-2 text-xs sm:text-sm leading-tight font-semibold border-b-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 ${activeTab===tab.id?'text-rose-700 border-rose-600':'text-slate-600 border-transparent hover:text-slate-900'}`}>{tab.label}</button>)}</nav>
-          {activeTab==='summary'?<><MatchCourt m={m} homeLogo={home?.logo} awayLogo={away?.logo} stale={stale}/><EventList m={m}/></>:activeTab==='stats'?<Statistics m={m} stale={stale}/>:activeTab==='lineups'?<Lineups m={m}/>:activeTab==='standings'?<LiveStandings match={m} stale={stale}/>:activeTab==='h2h'?<History match={m} mode="h2h"/>:activeTab==='matches'?<History match={m} mode="matches"/>:<Info m={m}/>}
-        </div>}
+        {open&&<div id={`protocol-details-${m.id}`} className="border-t border-slate-200"><ProtocolDetailsPanel key={m.id} match={m} homeLogo={home?.logo} awayLogo={away?.logo} stale={stale}/></div>}
       </article>;
     })}
   </section>)}</div>;

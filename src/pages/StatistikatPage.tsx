@@ -5,8 +5,10 @@ import Footer from '@/components/Footer';
 import PlayerStatsSection from '@/components/PlayerStatsSection';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, RadialBarChart, RadialBar } from 'recharts';
 import { Link } from 'react-router-dom';
+import { hasResult } from '@/lib/matchHistory';
+import { aggregateMatchEvents } from '@/lib/aggregateMatchEvents';
 const StatistikatPage: React.FC = () => {
-  const { competitions, matches, teams, players, getActiveSeason, getAggregatedScorers, calculateStandings, getTeamById } = useData();
+  const { competitions, displayMatches:matches, teams, players, getActiveSeason, getAggregatedScorers, calculateStandings, getTeamById, protocolError, protocolMatches } = useData();
   const activeSeason = getActiveSeason();
   const [selectedCompId, setSelectedCompId] = useState<string>('all');
 
@@ -32,9 +34,10 @@ const StatistikatPage: React.FC = () => {
     return players.filter(p => teamIds.has(p.teamId));
   }, [players, activeTeams]);
 
-  const finishedMatches = filteredMatches.filter(m => m.status === 'finished');
+  const finishedMatches = filteredMatches.filter(m => m.status === 'finished' && hasResult(m));
+  const eventTotals = useMemo(()=>aggregateMatchEvents(filteredMatches,protocolMatches),[filteredMatches,protocolMatches]);
   const liveMatches = filteredMatches.filter(m => m.status === 'live');
-  const upcomingMatches = filteredMatches.filter(m => m.status === 'scheduled');
+  const upcomingMatches = filteredMatches.filter(m => m.status === 'planned');
   const totalGoals = finishedMatches.reduce((sum, m) => sum + (m.homeScore ?? 0) + (m.awayScore ?? 0), 0);
   const avgGoals = finishedMatches.length > 0 ? (totalGoals / finishedMatches.length).toFixed(1) : '0';
   const highestScore = finishedMatches.reduce((max, m) => Math.max(max, (m.homeScore ?? 0) + (m.awayScore ?? 0)), 0);
@@ -163,6 +166,8 @@ const StatistikatPage: React.FC = () => {
           ))}
         </div>
 
+        {protocolError && <p role="status" className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Përditësimi i procesverbaleve nuk është i disponueshëm; statistikat mund të jenë të vjetruara.</p>}
+        {filteredMatches.some(m=>m.protocolResult==='finished') && <p className="mb-4 text-sm text-slate-600">Statistikat përfshijnë edhe rezultate të përkohshme nga procesverbalet e publikuara.</p>}
         {/* Scorecard row - 6 cards */}
         <div style={Object.assign({}, { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '24px' })}>
           {[
@@ -188,6 +193,11 @@ const StatistikatPage: React.FC = () => {
           ))}
         </div>
 
+        <section style={card({ marginBottom: '20px' })} aria-label="Ngjarjet e regjistruara">
+          <h2 style={{fontSize:16,fontWeight:700,margin:'0 0 8px'}}>Ngjarjet e regjistruara</h2>
+          <p style={{fontSize:12,color:'#64748B',margin:'0 0 14px'}}>Vetëm të dhënat e regjistruara; faulle nga {eventTotals.withFouls} ndeshje, kartonë dhe time-out nga {eventTotals.withProtocol} procesverbale të publikuara.</p>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(110px,1fr))',gap:12}}>{[['Faulle',eventTotals.fouls],['Kartonë të verdhë',eventTotals.yellow],['Kartonë të kuq',eventTotals.red],['Time-out',eventTotals.timeout]].map(([label,value])=><div key={label} style={{background:'#F8FAFC',borderRadius:10,padding:12}}><strong style={{display:'block',fontSize:20,color:'#0F172A'}}>{value}</strong><span style={{fontSize:12,color:'#475569'}}>{label}</span></div>)}</div>
+        </section>
         {/* Row 2: Area chart + Results */}
         <div style={Object.assign({}, { display: 'grid', gridTemplateColumns: '1fr', gap: '16px', marginBottom: '20px' })}>
           {/* Area chart - Goals per week */}
@@ -367,7 +377,7 @@ const StatistikatPage: React.FC = () => {
         {/* Sulmi/Mbrojtja me e mire per liga */}
         <div style={Object.assign({}, { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "20px", marginBottom: "20px" })}>
           {activeComps.filter(c => c.type !== "kupa").map(comp => {
-            const cm = matches.filter(m => m.competitionId === comp.id && m.status === "finished" && (activeSeason ? m.seasonId === activeSeason.id : true));
+            const cm = matches.filter(m => m.competitionId === comp.id && m.status === "finished" && hasResult(m) && (activeSeason ? m.seasonId === activeSeason.id : true));
             const ct = teams.filter(t => t.competitionId === comp.id);
             const stats: Record<string, { name: string; logo: string; gf: number; ga: number; played: number }> = {};
             ct.forEach(t => { stats[t.id] = { name: t.name, logo: t.logo, gf: 0, ga: 0, played: 0 }; });

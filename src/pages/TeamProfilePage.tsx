@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '@/context/DataContext';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, RadialBarChart, RadialBar, BarChart, Bar } from 'recharts';
 import FavoriteTeamButton from '@/components/FavoriteTeamButton';
+import {hasResult} from '@/lib/matchHistory';
 
 const DONUT_COLORS = ['#6366F1', '#F59E0B', '#22C55E', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6'];
 const FORM_COLORS: Record<string, { bg: string; text: string }> = {
@@ -15,13 +16,13 @@ const FORM_LABELS: Record<string, string> = { F: 'Fitore', H: 'Humbje', B: 'Bara
 const TeamProfilePage: React.FC = () => {
   const { id: teamId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { teams, players, matches, goals } = useData();
+  const { teams, players, displayMatches:matches, goals } = useData();
   const [searchPlayer, setSearchPlayer] = useState('');
 
   const team = teams.find(t => t.id === teamId);
   const teamPlayers = players.filter(p => p.teamId === teamId);
   const teamMatches = matches.filter(m => m.homeTeamId === teamId || m.awayTeamId === teamId);
-  const finishedMatches = teamMatches.filter(m => m.status === 'finished');
+  const finishedMatches = teamMatches.filter(m => m.status === 'finished' && hasResult(m));
   const liveMatches = teamMatches.filter(m => m.status === 'live');
 
   // Main stats
