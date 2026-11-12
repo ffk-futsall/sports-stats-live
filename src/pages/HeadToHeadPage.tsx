@@ -126,7 +126,7 @@ const HeadToHeadPage: React.FC = () => {
               </div>
             )}
 
-            <p className="mb-4 text-sm text-slate-600">Rezultatet e përfunduara nga procesverbali janë të përkohshme deri në konfirmimin në portal.{protocolError && ' Përditësimi live dështoi; të dhënat mund të jenë të vjetruara.'}</p>
+            {protocolError && <p role="status" className="mb-4 text-sm text-red-700">Përditësimi live dështoi; të dhënat mund të jenë të vjetruara.</p>}
             {liveMeetings.length>0&&<div className="mb-6"><h3 className="text-lg font-semibold text-red-700 mb-4">Ndeshjet live</h3><div className="space-y-3">{liveMeetings.map(m=><MatchCard key={m.id} match={m} onClick={setSelectedMatch} compact/>)}</div></div>}
             {/* Match History */}
             {h2h.matches.length > 0 && (
