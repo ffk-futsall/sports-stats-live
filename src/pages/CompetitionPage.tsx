@@ -24,7 +24,7 @@ interface ScorerData {
 }
 
 const ScorerPopup: React.FC<{ scorer: ScorerData; onClose: () => void }> = ({ scorer, onClose }) => {
-  const { getTeamById, matches, getActiveSeason , videos } = useData() as any;
+  const { getTeamById, displayMatches:matches, getActiveSeason , videos } = useData() as any;
   const team = getTeamById(scorer.teamId);
   const activeSeason = getActiveSeason();
 
