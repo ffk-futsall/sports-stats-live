@@ -10,6 +10,7 @@ import {
 import { dbVideos, dbNews, dbNormativeActs
 } from '@/lib/supabase-db';
 import { notificationService } from '@/lib/notifications';
+import { calculateLeagueStandings } from '@/lib/standings';
 
 // CACHE DISABLED: blloko shkrimet e localStorage per cache te madh
 if (typeof window !== 'undefined') {
@@ -794,54 +795,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // ============ STANDINGS ============
-  const calculateStandings = (compId: string): StandingsRow[] => {
-    const teams = state.teams.filter(t => t.competitionId === compId);
-    const matches = state.matches.filter(m => m.competitionId === compId && m.status === 'finished');
-    
-    const rows: StandingsRow[] = teams.map(t => ({
-      teamId: t.id,
-      teamName: t.name,
-      teamLogo: t.logo,
-      played: 0, won: 0, drawn: 0, lost: 0,
-      goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0,
-      form: []
-    }));
-
-    matches.forEach(m => {
-      const home = rows.find(r => r.teamId === m.homeTeamId);
-      const away = rows.find(r => r.teamId === m.awayTeamId);
-      if (!home || !away) return null;
-      const hs = m.homeScore ?? 0;
-      const as_ = m.awayScore ?? 0;
-      
-      home.played++; away.played++;
-      home.goalsFor += hs; home.goalsAgainst += as_;
-      away.goalsFor += as_; away.goalsAgainst += hs;
-
-      if (hs > as_) {
-        home.won++; home.points += 3; away.lost++;
-        home.form.push('W'); away.form.push('L');
-      } else if (hs < as_) {
-        away.won++; away.points += 3; home.lost++;
-        home.form.push('L'); away.form.push('W');
-      } else {
-        home.drawn++; away.drawn++; home.points++; away.points++;
-        home.form.push('D'); away.form.push('D');
-      }
-    });
-
-    rows.forEach(r => {
-      r.goalDifference = r.goalsFor - r.goalsAgainst;
-      r.form = r.form.slice(-5);
-    });
-
-    return rows.sort((a, b) => {
-      if (b.points !== a.points) return b.points - a.points;
-      if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
-      if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
-      return a.teamName.localeCompare(b.teamName);
-    });
-  };
+  const calculateStandings = (compId: string): StandingsRow[] => calculateLeagueStandings(state.teams, state.matches, compId);
 
   // ============ HEAD TO HEAD ============
   const getHeadToHead = (teamAId: string, teamBId: string) => {
