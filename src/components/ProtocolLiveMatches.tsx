@@ -168,7 +168,7 @@ function HistoryRow({match,minimal=false}:{match:Match;minimal?:boolean}) {
   const competition=competitions.find(c=>c.id===match.competitionId)?.name;
   const date=match.date ? formatDate(match.date) : 'Data nuk është caktuar';
   return <li className="py-3 border-b last:border-0 border-slate-100">
-    {!minimal&&<div className="flex flex-wrap items-center gap-2 text-xs text-slate-500"><span>{[date, match.time, competition].filter(Boolean).join(' · ')}</span>{match.status==='live'&&<span className="font-bold text-red-700">LIVE</span>}{match.protocolResult==='finished'&&<span className="font-semibold text-amber-800">Përfunduar · procesverbal (përkohshëm)</span>}</div>}
+    {!minimal&&<div className="flex flex-wrap items-center gap-2 text-xs text-slate-500"><span>{[date, match.time, competition].filter(Boolean).join(' · ')}</span>{match.status==='live'&&<span className="font-bold text-red-700">LIVE</span>}</div>}
     <div className="mt-1.5 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-sm"><span className="font-semibold text-slate-800 break-words">{home}</span><strong className="rounded bg-slate-100 px-2 py-1 text-slate-900 tabular-nums whitespace-nowrap" aria-label="Rezultati">{['finished','live'].includes(match.status)&&hasResult(match)?`${match.homeScore} : ${match.awayScore}`:'— : —'}</strong><span className="font-semibold text-slate-800 text-right break-words">{away}</span></div>
   </li>;
 }
