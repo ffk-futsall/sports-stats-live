@@ -3,6 +3,14 @@ import { publicProtocolSnapshot } from './_protocolProjection.js';
 
 export const config = { api: { bodyParser: { sizeLimit: '3mb' } } };
 const err=(res,status,error)=>res.status(status).json({error});
+// The assigned week is controlled by the portal, never by the editable draft.
+function validEditPassword(password,details){
+  const round=String(details?.round ?? '').trim();
+  return /^\d+$/.test(round) && Number(round)>0 && typeof password==='string' && password===`ffkfutsall${round}`;
+}
+const protectedFields=['round','competition','cupStage','season','matchDate','startTime','venue','city','organization','organizationNote','securityName','securityId','attendance','teams','officials'];
+function protectedChanged(before,after){return protectedFields.some(key=>JSON.stringify(before?.[key]??null)!==JSON.stringify(after?.[key]??null));}
+function editingLocked(draft){return draft?._editLocked===true || (!!draft?.phase && draft.phase!=='setup');}
 function cors(req,res) {
   const allowed=process.env.PROTOCOL_ORIGIN;
   if (allowed && req.headers.origin === allowed) {
@@ -39,14 +47,22 @@ export default async function handler(req,res) {
     }
     if(actor.delegate.must_change_password)return res.status(403).json({error:'Ndryshoni fjalëkalimin para se të vazhdoni.',code:'PASSWORD_CHANGE_REQUIRED'});
     if(req.method==='GET' && !req.query?.id){
-      const {data,error}=await supabase.from('protocol_assignments').select('id,portal_match_id,match_details,state,rejection_reason,published,publication_blocked,created_at,updated_at').eq('delegate_id',actor.delegate.id).is('archived_at',null).order('created_at',{ascending:false});
-      if(error)throw error;return res.status(200).json({delegate:actor.delegate,assignments:data});
+      const {data,error}=await supabase.from('protocol_assignments').select('id,portal_match_id,match_details,state,rejection_reason,published,publication_blocked,created_at,updated_at,draft').eq('delegate_id',actor.delegate.id).is('archived_at',null).order('created_at',{ascending:false});
+      if(error)throw error;return res.status(200).json({delegate:actor.delegate,assignments:(data||[]).map(({draft,...a})=>({...a,phase:draft?.phase||'setup'}))});
     }
     const id=String(req.query?.id||body.id||'');
     if(!/^[a-f\d-]{36}$/i.test(id))return err(res,400,'Caktimi është i pavlefshëm.');
     if(req.method==='GET'){
       const {data,error}=await supabase.from('protocol_assignments').select('id,match_details,state,rejection_reason,draft,draft_version,published,publication_blocked').eq('id',id).eq('delegate_id',actor.delegate.id).is('archived_at',null).maybeSingle();
       if(error)throw error;if(!data)return err(res,404,'Caktimi nuk u gjet.');return res.status(200).json({assignment:data});
+    }
+    if(req.method==='POST' && body.action==='verify-edit'){
+      const result=await supabase.from('protocol_assignments').select('match_details,state').eq('id',id).eq('delegate_id',actor.delegate.id).is('archived_at',null).maybeSingle();
+      if(result.error)throw result.error;
+      if(!result.data || result.data.state!=='accepted')return err(res,404,'Caktimi nuk u gjet.');
+      if(!/^\d+$/.test(String(result.data.match_details?.round??'').trim()) || Number(result.data.match_details.round)<=0)return err(res,400,'Numri i javës mungon në portal. Kontaktoni administratorin.');
+      if(!validEditPassword(body.password,result.data.match_details))return err(res,403,'Fjalëkalimi është i pasaktë.');
+      return res.status(200).json({ok:true});
     }
     if(req.method==='POST' && body.action==='respond'){
       if(!['accepted','rejected'].includes(body.state))return err(res,400,'Përgjigjja është e pavlefshme.');
@@ -57,9 +73,14 @@ export default async function handler(req,res) {
     }
     if(req.method==='PUT'){
       if(!body.draft || typeof body.draft!=='object' || Array.isArray(body.draft) || !Number.isInteger(body.version) || body.version<0 || typeof body.published!=='boolean' || JSON.stringify(body.draft).length>2500000) return err(res,400,'Të dhënat e procesverbalit nuk janë të vlefshme.');
-      const current=await supabase.from('protocol_assignments').select('match_details,state,publication_blocked').eq('id',id).eq('delegate_id',actor.delegate.id).is('archived_at',null).maybeSingle();
+      const current=await supabase.from('protocol_assignments').select('match_details,state,publication_blocked,draft').eq('id',id).eq('delegate_id',actor.delegate.id).is('archived_at',null).maybeSingle();
       if(current.error)throw current.error;
       if(!current.data || current.data.state!=='accepted')return err(res,404,'Caktimi nuk u gjet.');
+      if(editingLocked(current.data.draft)){
+        // A started protocol cannot be unlocked by changing the client-side flag or phase.
+        body.draft._editLocked=true;
+        if(protectedChanged(current.data.draft,body.draft) && !validEditPassword(body.editPassword,current.data.match_details))return err(res,403,'Fjalëkalimi i javës kërkohet për ndryshimin e të dhënave të ndeshjes.');
+      }
       const publishing=body.published && !current.data.publication_blocked;
       const snapshot=publishing?publicProtocolSnapshot(body.draft):null;
       if(snapshot){
