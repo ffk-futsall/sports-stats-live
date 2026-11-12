@@ -130,9 +130,6 @@ function LiveStandings({match,stale}:{match:ProtocolMatch;stale:boolean}) {
   if(competition.type==='kupa') return <p className="p-5 text-sm text-slate-600">Tabela live është e disponueshme për garat e ligës, jo për ndeshjet e kupës.</p>;
   if(!rows.length) return <p className="p-5 text-sm text-slate-600">Nuk ka skuadra të regjistruara për këtë garë.</p>;
   return <section className="p-3 sm:p-5" aria-label={`Tabela live ${competition.name}`}>
-    <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-red-500"/><h3 className="font-bold text-slate-900">Tabela live · {competition.name}</h3></div>
-    <p className="mt-1 text-xs text-slate-600">Parashikim sipas rezultateve aktuale; renditja zyrtare nuk ndryshohet. Fitore 3 pikë, barazim 1 pikë. Renditja: pikë, goldallim, gola të shënuar.</p>
-    <p className="mt-1 text-xs text-slate-600">Ndeshjet e përfunduara në procesverbal mbeten të përkohshme deri sa rezultati të regjistrohet në portal.</p>
     {protocolLoading&&<p role="status" className="mt-2 text-xs text-slate-600">Duke ngarkuar të dhënat live…</p>}
     {stale&&<p role="status" className="mt-2 text-xs font-semibold text-red-700">Përditësimi live dështoi; të dhënat mund të jenë të vjetruara.</p>}
     <p className="mt-2 text-xs text-slate-500 sm:hidden">Rrëshqitni tabelën anash për të parë të gjitha statistikat.</p>
