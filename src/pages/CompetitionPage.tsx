@@ -162,7 +162,7 @@ function getEmbedUrl(url: string): string {
 }
 
 const CompetitionPage: React.FC<Props> = ({ type, title }) => {
-  const { competitions, matches, getActiveSeason, calculateStandings, getAggregatedScorers, getTeamById, videos, protocolLoading, protocolError } = useData() as any;
+  const { competitions, displayMatches:matches, getActiveSeason, calculateStandings, getAggregatedScorers, getTeamById, videos, protocolLoading, protocolError } = useData() as any;
   const activeSeason = getActiveSeason();
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [activeTab, setActiveTab] = useState<'ndeshjet' | 'tabela' | 'golashenuesit'>('ndeshjet');
@@ -210,7 +210,7 @@ const CompetitionPage: React.FC<Props> = ({ type, title }) => {
   });
 
     useEffect(() => {
-    if (compMatches.length === 0) return;
+    if (protocolLoading || compMatches.length === 0) return;
     const finishedWeeks = [...new Set(
       compMatches.filter(m => m.status === 'finished').map(m => m.week)
     )].sort((a, b) => a - b);
@@ -226,7 +226,7 @@ const CompetitionPage: React.FC<Props> = ({ type, title }) => {
         setStatusFilter('planned');
       }
     }
-  }, [comp?.id]);
+  }, [comp?.id, protocolLoading]);
 
   const weekMatches = useMemo(() => {
     let filtered = compMatches.filter(m => m.week === selectedWeek);
@@ -295,13 +295,13 @@ const CompetitionPage: React.FC<Props> = ({ type, title }) => {
   return (
     <div className="min-h-screen bg-[#F1F5F9] flex flex-col">
       <Header />
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="w-full min-w-0 max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
           <p className="text-gray-400 text-sm mt-1">Sezoni {activeSeason?.name || ''}</p>
         </div>
 
-        <div className="flex gap-2 mb-8">
+        <div className="flex flex-wrap gap-2 mb-8">
           {tabItems.map(t => {
             return <button key={t.key} onClick={() => setActiveTab(t.key)} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === t.key ? 'bg-[#0f1830] text-white shadow-lg' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'}`}>{t.label}</button>;
           })}
@@ -310,6 +310,7 @@ const CompetitionPage: React.FC<Props> = ({ type, title }) => {
         {/* Matches */}
         {activeTab === 'ndeshjet' && (
           <div>
+            {protocolError && <p role="status" className="mb-4 rounded-lg bg-amber-50 border border-amber-300 p-3 text-sm text-amber-900">Përditësimi i procesverbaleve dështoi; rezultatet mund të jenë të vjetruara ose të mungojnë.</p>}
             {weeks.length === 0 ? <p className="text-gray-400 text-center py-8">Nuk ka ndeshje te regjistruara.</p> : (
               <>
                 <div className="flex items-center justify-between mb-6 bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
@@ -320,7 +321,7 @@ const CompetitionPage: React.FC<Props> = ({ type, title }) => {
                   </div>
                   <button onClick={() => weekIdx < weeks.length - 1 && setSelectedWeek(weeks[weekIdx + 1])} disabled={weekIdx >= weeks.length - 1} className="p-2 rounded-xl hover:bg-gray-100 disabled:opacity-30 transition-colors"><ChevronRight className="w-4 h-4" /></button>
                 </div>
-                <div className="flex gap-2 mb-6">
+                <div className="flex flex-wrap gap-2 mb-6">
                   {[{ value: 'all', label: 'Te gjitha' }, { value: 'finished', label: 'Perfunduara' }, { value: 'planned', label: 'Ardhshme' }, { value: 'live', label: 'Live' }].map(f => (
                     <button key={f.value} onClick={() => handleStatusFilter(f.value)} className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${statusFilter === f.value ? 'bg-[#0f1830] text-white shadow-sm' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'}`}>{f.label}</button>
                   ))}
@@ -538,7 +539,7 @@ const CompetitionPage: React.FC<Props> = ({ type, title }) => {
         })()}
       </div>
       <div className="mt-auto"><Footer /></div>
-      <MatchDetailModal match={selectedMatch} onClose={() => setSelectedMatch(null)} />
+      <MatchDetailModal match={selectedMatch ? matches.find(m=>m.id===selectedMatch.id)||selectedMatch : null} onClose={() => setSelectedMatch(null)} />
       {selectedScorer && <ScorerPopup scorer={selectedScorer} onClose={() => setSelectedScorer(null)} />}
     </div>
   );

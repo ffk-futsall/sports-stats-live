@@ -102,7 +102,7 @@ const MatchDetailModal: React.FC<Props> = ({ match, onClose }) => {
                 {isFinished && (
                   <div className="flex items-center gap-1.5 mb-3 px-3 py-1 bg-emerald-500/10 rounded-lg border border-emerald-200">
                     <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Perfunduar</span>
+                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">{match.protocolResult==='finished'?'Procesverbal · përkohshëm':'Perfunduar'}</span>
                   </div>
                 )}
                 {isPlanned && (
@@ -111,12 +111,12 @@ const MatchDetailModal: React.FC<Props> = ({ match, onClose }) => {
                 <div className="relative">
                   <div className="absolute -inset-3 bg-white/60 rounded-2xl blur-sm" />
                   <div className="relative flex items-center bg-white rounded-2xl px-5 py-3 border border-[#0f1830]/15 shadow-lg">
-                    <span className="text-[44px] font-black text-gray-800 tabular-nums leading-none">{isPlanned ? '-' : (match.homeScore ?? 0)}</span>
+                    <span className="text-[44px] font-black text-gray-800 tabular-nums leading-none">{isPlanned ? '-' : (match.homeScore ?? '—')}</span>
                     <div className="flex flex-col items-center gap-1 mx-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#0f1830]/30" />
                       <span className="w-1.5 h-1.5 rounded-full bg-[#0f1830]/30" />
                     </div>
-                    <span className="text-[44px] font-black text-gray-800 tabular-nums leading-none">{isPlanned ? '-' : (match.awayScore ?? 0)}</span>
+                    <span className="text-[44px] font-black text-gray-800 tabular-nums leading-none">{isPlanned ? '-' : (match.awayScore ?? '—')}</span>
                   </div>
                 </div>
               </div>
