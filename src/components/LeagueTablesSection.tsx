@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '@/context/DataContext';
+import { LiveStandingsNotice, LiveTeamIndicators } from '@/components/LiveStandingIndicators';
 import { Link } from 'react-router-dom';
 interface ScorerModalData {
   id: string;
@@ -112,7 +113,7 @@ const ScorerModal: React.FC<{ scorer: ScorerModalData; onClose: () => void }> = 
 };
 
 const LeagueTablesSection: React.FC = () => {
-  const { competitions, calculateStandings, getActiveSeason, getLatestPlayerOfWeek, getTeamById, getAggregatedScorers, isLoading } = useData();
+  const { competitions, calculateStandings, getActiveSeason, getLatestPlayerOfWeek, getTeamById, getAggregatedScorers, isLoading, protocolLoading, protocolError } = useData();
   const activeSeason = getActiveSeason();
   const [selectedScorer, setSelectedScorer] = useState<ScorerModalData | null>(null);
 
@@ -224,10 +225,11 @@ const LeagueTablesSection: React.FC = () => {
                 {/* Table header */}
                 <div className="bg-[#0f1830] px-3 sm:px-4 md:px-6 lg:px-8 py-3 flex items-center gap-2">
                   
-                  <span className="text-sm font-bold text-white">{currentComp?.name || 'Tabela'}</span>
+                  <span className="text-sm font-bold text-white">{currentComp?.name || 'Tabela'}{standings.some(row=>row.liveResults.length>0) ? ' · LIVE' : ''}</span>
                   <span className="ml-auto text-[10px] text-gray-400 font-medium uppercase tracking-wider">Sezoni {activeSeason?.name}</span>
                 </div>
 
+                <LiveStandingsNotice rows={standings} loading={protocolLoading} error={protocolError} />
                 <div className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[560px] sm:min-w-0">
                   <thead>
@@ -248,9 +250,9 @@ const LeagueTablesSection: React.FC = () => {
                     {standings.map((row, i) => (
                       <tr
                         key={row.teamId}
-                        className={`${getRowBg(i + 1)} hover:bg-[#0f1830]/10/30 transition-colors border-b border-gray-100 last:border-0`}
+                        className={`${row.liveResults.length ? 'bg-sky-50' : getRowBg(i + 1)} hover:bg-[#0f1830]/10/30 transition-colors border-b border-gray-100 last:border-0`}
                       >
-                        <td className={`px-3 py-2.5 sticky left-0 z-10 ${getRowBg(i + 1)}`}>
+                        <td className={`px-3 py-2.5 sticky left-0 z-10 ${row.liveResults.length ? 'bg-sky-50' : getRowBg(i + 1)}`}>
                           <div className="flex items-center">
                             <span
                               className="w-1 h-6 rounded-sm mr-2 flex-shrink-0"
@@ -259,22 +261,22 @@ const LeagueTablesSection: React.FC = () => {
                             <span className={`text-xs font-bold ${i < 3 ? 'text-[#0f1830]' : 'text-gray-400'}`}>{i + 1}</span>
                           </div>
                         </td>
-                        <td className={`px-3 py-2.5 sticky left-10 z-10 ${getRowBg(i + 1)}`}>
-                          <Link to={`/skuadra/${row.teamId}`} className="flex items-center gap-2 hover:text-[#0f1830] transition-colors group">
+                        <td className={`px-3 py-2.5 sticky left-10 z-10 ${row.liveResults.length ? 'bg-sky-50' : getRowBg(i + 1)}`}>
+                          <div className="flex items-center gap-2"><Link to={`/skuadra/${row.teamId}`} className="flex items-center gap-2 hover:text-[#0f1830] transition-colors group">
                             <div className="w-7 h-7 rounded-md bg-gray-50 overflow-hidden flex-shrink-0 border border-gray-200 group-hover:border-[#0f1830]/30 transition-colors">
                               {row.teamLogo ? <img src={row.teamLogo} alt="" className="w-full h-full object-cover" /> : <span className="flex items-center justify-center w-full h-full text-[9px] text-gray-400 font-bold">{row.teamName.charAt(0)}</span>}
                             </div>
                             <span className="font-semibold text-gray-800 group-hover:text-[#0f1830] whitespace-nowrap text-[13px]">{row.teamName}</span>
-                          </Link>
+                          </Link><LiveTeamIndicators row={row}/></div>
                         </td>
-                        <td className="px-3 py-2.5 text-center text-gray-600 font-medium">{row.played}</td>
-                        <td className="px-3 py-2.5 text-center text-emerald-600 font-semibold">{row.won}</td>
-                        <td className="px-3 py-2.5 text-center text-gray-400">{row.drawn}</td>
-                        <td className="px-3 py-2.5 text-center text-red-500 font-semibold">{row.lost}</td>
-                        <td className="px-3 py-2.5 text-center text-gray-500 text-xs font-medium">{row.goalsFor}:{row.goalsAgainst}</td>
+                        <td className={`px-3 py-2.5 text-center font-medium ${row.liveResults.length?'text-rose-700':'text-gray-600'}`}>{row.played}</td>
+                        <td className={`px-3 py-2.5 text-center font-semibold ${row.liveResults.length?'text-rose-700':'text-emerald-600'}`}>{row.won}</td>
+                        <td className={`px-3 py-2.5 text-center ${row.liveResults.length?'text-rose-700 font-semibold':'text-gray-400'}`}>{row.drawn}</td>
+                        <td className={`px-3 py-2.5 text-center font-semibold ${row.liveResults.length?'text-rose-700':'text-red-500'}`}>{row.lost}</td>
+                        <td className={`px-3 py-2.5 text-center text-xs font-medium ${row.liveResults.length?'text-rose-700':'text-gray-500'}`}>{row.goalsFor}:{row.goalsAgainst}</td>
                         <td className="px-3 py-2.5 text-center font-bold text-xs" style={Object.assign({}, { color: row.goalDifference > 0 ? '#22C55E' : row.goalDifference < 0 ? '#EF4444' : '#9CA3AF' })}>{row.goalDifference > 0 ? '+' : ''}{row.goalDifference}</td>
                         <td className="px-3 py-2.5 text-center">
-                          <span className="inline-flex items-center justify-center w-8 h-7 rounded-md bg-[#0f1830] text-white font-bold text-xs">{row.points}</span>
+                          <span className={`inline-flex items-center justify-center w-8 h-7 rounded-md text-white font-bold text-xs ${row.liveResults.length?'bg-rose-700':'bg-[#0f1830]'}`}>{row.points}</span>
                         </td>
                         <td className="px-3 py-2.5 text-center hidden md:table-cell">
                           <div className="flex justify-center gap-0.5">
