@@ -4,6 +4,7 @@ import { useData } from '@/context/DataContext';
 import { LiveTeamIndicators } from '@/components/LiveStandingIndicators';
 import { getHeadToHeadHistory, getTeamMatchHistory, hasResult } from '@/lib/matchHistory';
 import type { Match } from '@/types';
+import { protocolStatistics, type StatisticsPeriod } from '@/lib/protocolStatistics';
 
 type Side = 'a' | 'b';
 type Score = { a: string; b: string };
@@ -16,7 +17,7 @@ export type ProtocolMatch = { id: string; portalMatchId: string; updatedAt: stri
 const phases: Record<string,string> = { setup:'Para fillimit', first:'Pjesa e parë', halftime:'Përfundoi pjesa e parë', second:'Pjesa e dytë', after_second:'Përfundoi pjesa e dytë', extra:'Koha shtesë', after_extra:'Përfundoi koha shtesë', penalties:'Penalltitë', finished:'Ndeshja përfundoi' };
 const rowPhases: Record<string,string> = {setup:'Para fillimit',first:'Pjesa e parë',halftime:'Pushim',second:'Pjesa e dytë',after_second:'Pjesa e dytë përfundoi',extra:'Koha shtesë',after_extra:'Koha shtesë përfundoi',penalties:'Penalltitë',finished:'Përfundoi'};
 const refNames: Record<string,string> = { ref1:'Gjyqtari 1', ref2:'Gjyqtari 2', ref3:'Gjyqtari 3', ref4:'Gjyqtari 4', delegate:'Delegati', timekeeper:'Kohëmatësi' };
-const tabs = [{id:'summary',label:'Përmbledhje'},{id:'lineups',label:'Formacionet'},{id:'standings',label:'Tabela live'},{id:'h2h',label:'H2H'},{id:'matches',label:'Ndeshjet'},{id:'info',label:'Informacione'}] as const;
+const tabs = [{id:'summary',label:'Përmbledhje'},{id:'stats',label:'Statistikat'},{id:'lineups',label:'Formacionet'},{id:'standings',label:'Tabela live'},{id:'h2h',label:'H2H'},{id:'matches',label:'Ndeshjet'},{id:'info',label:'Informacione'}] as const;
 type Tab = typeof tabs[number]['id'];
 type TimelineItem = { key:string; period:string; minute:string; addedTime?:string; team:string; kind:string; player:string; score?:string; sourceRow?:string; outgoing?:string; incoming?:string };
 const formatScore = (s?: Score) => s && s.a != null && s.b != null && s.a !== '' && s.b !== '' ? `${s.a} : ${s.b}` : '—';
@@ -62,12 +63,9 @@ function EventList({m}:{m:ProtocolMatch}) {
   </div>;
 }
 // The court is an illustration, not a player-tracking feed. Only recorded events are counted.
-function MatchCourt({m,homeLogo,awayLogo}:{m:ProtocolMatch;homeLogo?:string;awayLogo?:string}) {
-  const events=m.events||[];
+function MatchCourt({m,homeLogo,awayLogo,stale=false}:{m:ProtocolMatch;homeLogo?:string;awayLogo?:string;stale?:boolean}) {
   // Shfaqen vetëm startuesit e shënuar në procesverbal, jo lojtarët aktualë pas zëvendësimeve.
   const starters:Record<Side,Player[]> = {a:(m.teams.a.players||[]).filter(p=>p.starter===true).slice(0,5), b:(m.teams.b.players||[]).filter(p=>p.starter===true).slice(0,5)};
-  const counts=(side:Side,kind:string,red?:boolean)=>events.filter(e=>e.team===side&&e.kind===kind&&(red===undefined||Boolean(e.sourceRow?.toLowerCase().startsWith('kk'))===red)).length;
-  const metrics=[{label:'Faulle',a:counts('a','foul'),b:counts('b','foul')},{label:'Kart. të verdhë',a:counts('a','card',false),b:counts('b','card',false)},{label:'Kart. të kuq',a:counts('a','card',true),b:counts('b','card',true)}];
   return <section aria-label="Pamja e ndeshjes live" className="px-3 sm:px-5 pt-4">
     <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
       <div className="px-3 sm:px-5 py-4">
@@ -105,13 +103,29 @@ function MatchCourt({m,homeLogo,awayLogo}:{m:ProtocolMatch;homeLogo?:string;away
           </div>
         </div>
         <div className="p-3 sm:p-4 sm:border-l border-t sm:border-t-0 border-slate-200">
-          <h3 className="text-sm font-bold text-slate-900">Statistikat e regjistruara</h3>
-          <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-sm font-semibold text-slate-600"><span className="truncate" title={m.teams.a.name}>{m.teams.a.name}</span><span> </span><span className="truncate text-right" title={m.teams.b.name}>{m.teams.b.name}</span></div>
-          <dl className="mt-1 divide-y divide-slate-100">{metrics.map(stat=><div key={stat.label} className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 py-2 text-sm"><dd className="font-bold text-slate-900 tabular-nums">{stat.a}</dd><dt className="text-center text-slate-600">{stat.label}</dt><dd className="text-right font-bold text-slate-900 tabular-nums">{stat.b}</dd></div>)}</dl>
-          <p className="mt-2 text-sm text-slate-600">Vetëm ngjarjet e regjistruara në procesverbal.</p>
+          <Statistics m={m} compact stale={stale}/>
+
         </div>
       </div>
     </div>
+  </section>;
+}
+function Statistics({m,compact=false,stale=false}:{m:ProtocolMatch;compact?:boolean;stale?:boolean}) {
+  const [period,setPeriod]=useState<StatisticsPeriod>('match');
+  const {rows,unknownPeriod,unknownCard,goalFallback}=protocolStatistics(m,compact?'match':period);
+  const periods: {id:StatisticsPeriod;label:string}[]=[{id:'match',label:'Ndeshja'},{id:'first',label:'Pjesa e parë'},{id:'second',label:'Pjesa e dytë'}];
+  return <section aria-label={compact?'Statistikat e regjistruara':'Statistikat e ndeshjes'} className={compact?'': 'p-4 sm:p-5'}>
+    <h3 className="text-sm font-bold text-slate-900">Statistikat e regjistruara</h3>
+    {!compact&&<div role="group" aria-label="Periudha e statistikave" className="mt-3 flex flex-wrap gap-1 rounded-md bg-slate-100 p-1">{periods.map(p=><button key={p.id} type="button" aria-pressed={period===p.id} onClick={()=>setPeriod(p.id)} className={`min-h-10 flex-1 rounded px-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 ${period===p.id?'bg-white text-slate-900 shadow-sm':'text-slate-600 hover:text-slate-900'}`}>{p.label}</button>)}</div>}
+    {stale&&<p role="status" className="mt-3 text-sm font-semibold text-red-700">Përditësimi live dështoi; të dhënat mund të jenë të vjetruara.</p>}
+    <div className="mt-4 grid grid-cols-2 gap-4 text-sm font-semibold text-slate-700"><span className="min-w-0 break-words"><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm bg-slate-950" aria-hidden="true"/>{m.teams.a.name}</span><span className="min-w-0 break-words text-right">{m.teams.b.name}<span className="ml-1.5 inline-block h-2.5 w-2.5 rounded-sm bg-rose-600" aria-hidden="true"/></span></div>
+    <dl className="mt-3 space-y-3">{rows.map(row=>{const max=Math.max(row.a,row.b);return <div key={row.key}>
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 text-sm"><dd className="font-bold tabular-nums text-slate-950">{row.a}</dd><dt className="text-center font-medium text-slate-700">{row.label}</dt><dd className="font-bold tabular-nums text-slate-950">{row.b}</dd></div>
+      <div className="mt-1 flex gap-0.5" aria-hidden="true"><div className="flex h-1.5 w-1/2 justify-end overflow-hidden rounded-sm bg-slate-100"><span className="bg-slate-950" style={{width:`${max?row.a/max*100:0}%`}}/></div><div className="h-1.5 w-1/2 overflow-hidden rounded-sm bg-slate-100"><span className="block h-full bg-rose-600" style={{width:`${max?row.b/max*100:0}%`}}/></div></div>
+    </div>})}</dl>
+    <p className="mt-4 text-xs leading-5 text-slate-600">Golat sipas rezultatit të procesverbalit; ngjarjet e tjera sipas regjistrimeve. Penalltitë e serisë nuk përfshihen te golat.{goalFallback?' Kur rezultati mungon, numërohen golat e regjistruar.':''}</p>
+    {!compact&&period!=='match'&&unknownPeriod&&<p className="mt-2 text-xs leading-5 text-amber-800">Ngjarjet pa pjesë të shënuar përfshihen vetëm te “Ndeshja”.</p>}
+    {unknownCard&&<p className="mt-2 text-xs leading-5 text-amber-800">Kartonët pa lloj të regjistruar nuk përfshihen te kartonët e verdhë ose të kuq.</p>}
   </section>;
 }
 function Lineups({m}:{m:ProtocolMatch}) {
@@ -206,8 +220,8 @@ export default function ProtocolLiveMatches({matches,stale=false}:{matches:Proto
         </button>
         {open&&<div id={`protocol-details-${m.id}`} className="bg-white text-slate-900 border-t border-slate-200">
           <div className="px-4 sm:px-6 pt-3 pb-1 flex items-center justify-between gap-3 text-sm text-slate-600"><span>DETAJET E NDESHJES</span><span className="font-semibold text-slate-700">{phases[m.phase]||'Ndeshja'}</span></div>
-          <nav aria-label="Detajet e ndeshjes" className="grid grid-cols-3 sm:flex border-b border-slate-200 px-2 sm:px-4">{tabs.map(tab=><button key={tab.id} type="button" aria-pressed={activeTab===tab.id} onClick={()=>setActiveTab(tab.id)} className={`min-h-11 min-w-0 sm:flex-1 px-1 sm:px-3 text-sm font-semibold border-b-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 ${activeTab===tab.id?'text-rose-700 border-rose-600':'text-slate-600 border-transparent hover:text-slate-900'}`}>{tab.label}</button>)}</nav>
-          {activeTab==='summary'?<><MatchCourt m={m} homeLogo={home?.logo} awayLogo={away?.logo}/><EventList m={m}/></>:activeTab==='lineups'?<Lineups m={m}/>:activeTab==='standings'?<LiveStandings match={m} stale={stale}/>:activeTab==='h2h'?<History match={m} mode="h2h"/>:activeTab==='matches'?<History match={m} mode="matches"/>:<Info m={m}/>}
+          <nav aria-label="Detajet e ndeshjes" className="grid grid-cols-4 sm:flex border-b border-slate-200 px-2 sm:px-4">{tabs.map(tab=><button key={tab.id} type="button" aria-pressed={activeTab===tab.id} onClick={()=>setActiveTab(tab.id)} className={`min-h-11 min-w-0 sm:flex-1 px-1 sm:px-2 text-[13px] sm:text-sm leading-tight font-semibold border-b-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 ${activeTab===tab.id?'text-rose-700 border-rose-600':'text-slate-600 border-transparent hover:text-slate-900'}`}>{tab.label}</button>)}</nav>
+          {activeTab==='summary'?<><MatchCourt m={m} homeLogo={home?.logo} awayLogo={away?.logo} stale={stale}/><EventList m={m}/></>:activeTab==='stats'?<Statistics m={m} stale={stale}/>:activeTab==='lineups'?<Lineups m={m}/>:activeTab==='standings'?<LiveStandings match={m} stale={stale}/>:activeTab==='h2h'?<History match={m} mode="h2h"/>:activeTab==='matches'?<History match={m} mode="matches"/>:<Info m={m}/>}
         </div>}
       </article>;
     })}
