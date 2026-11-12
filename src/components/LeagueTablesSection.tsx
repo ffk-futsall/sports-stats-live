@@ -225,7 +225,7 @@ const LeagueTablesSection: React.FC = () => {
                 {/* Table header */}
                 <div className="bg-[#0f1830] px-3 sm:px-4 md:px-6 lg:px-8 py-3 flex items-center gap-2">
                   
-                  <span className="text-sm font-bold text-white">{currentComp?.name || 'Tabela'}{standings.some(row=>row.liveResults.length>0) ? ' · LIVE' : ''}</span>
+                  <span className="text-sm font-bold text-white">{currentComp?.name || 'Tabela'}{standings.some(row=>row.liveResults.some(result=>!result.provisional)) ? ' · LIVE' : ''}</span>
                   <span className="ml-auto text-[10px] text-gray-400 font-medium uppercase tracking-wider">Sezoni {activeSeason?.name}</span>
                 </div>
 
