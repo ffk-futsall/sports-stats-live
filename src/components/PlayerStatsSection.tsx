@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useData } from '@/context/DataContext';
 import { PlayerStats } from '@/types';
 import { getSuspensionRules, getSuspensionStatus } from '@/lib/suspensions';
+import {protocolPlayerCards} from '@/lib/protocolPlayerCards';
 function loadPlayerStats(): PlayerStats[] {
   try { var s = localStorage.getItem('ffk_player_stats'); if (s) return JSON.parse(s); } catch(e) {}
   return [];
@@ -19,6 +20,7 @@ var PlayerStatsSection: React.FC = function() {
   var suspensionRules = getSuspensionRules(settings);
 
   var stats = loadPlayerStats();
+  var reportCards = useMemo(()=>protocolPlayerCards(data.displayMatches,players,stats,data.protocolMatches),[data.displayMatches,players,stats,data.protocolMatches]);
 
   var _compFilter = useState<'all' | string>('all');
   var compFilter = _compFilter[0]; var setCompFilter = _compFilter[1];
@@ -41,8 +43,9 @@ var PlayerStatsSection: React.FC = function() {
   var weeks = useMemo(function() {
     var set = new Set<number>();
     stats.forEach(function(s) { set.add(s.week); });
+    reportCards.forEach(function(s) { set.add(s.week); });
     return Array.from(set).sort(function(a, b) { return a - b; });
-  }, [stats]);
+  }, [stats, reportCards]);
 
   var aggregated = useMemo(function() {
     var map: Record<string, { playerId: string; firstName: string; lastName: string; photo: string; teamId: string; yellowCards: number; redCards: number }> = {};
@@ -62,13 +65,23 @@ var PlayerStatsSection: React.FC = function() {
       map[s.playerId].redCards += s.redCards;
     });
 
+    reportCards.forEach(function(s) {
+      if (compFilter !== 'all' && s.competitionId !== compFilter) return;
+      if (teamFilter !== 'all' && s.teamId !== teamFilter) return;
+      if (weekFilter !== 'all' && String(s.week) !== weekFilter) return;
+      if (activeSeason && s.seasonId !== activeSeason.id) return;
+      var key = s.playerId || `report:${s.teamId}:${(s.firstName+' '+s.lastName).toLowerCase()}`;
+      if (!map[key]) map[key] = {playerId:key,firstName:s.firstName,lastName:s.lastName,photo:s.photo,teamId:s.teamId,yellowCards:0,redCards:0};
+      map[key].yellowCards += s.yellowCards; map[key].redCards += s.redCards;
+    });
+
     var result = Object.values(map);
     if (search) {
       var q = search.toLowerCase();
       result = result.filter(function(r) { return (r.firstName + ' ' + r.lastName).toLowerCase().indexOf(q) !== -1; });
     }
     return result.sort(function(a, b) { return (b.yellowCards + b.redCards * 2) - (a.yellowCards + a.redCards * 2); });
-  }, [stats, players, compFilter, teamFilter, weekFilter, search, activeSeason]);
+  }, [stats, reportCards, players, compFilter, teamFilter, weekFilter, search, activeSeason]);
 
   return (
     <div className="mt-10 px-6 pb-8">
@@ -78,7 +91,7 @@ var PlayerStatsSection: React.FC = function() {
         </div>
         <div>
           <h2 className="text-xl font-bold text-gray-800">Statistikat Individuale</h2>
-          <p className="text-sm text-gray-500">Kartonat e verdha dhe te kuqe per lojtar</p>
+          <p className="text-sm text-gray-500">Kartonat e verdha dhe te kuqe per lojtar. Ngjarjet e procesverbalit janë të përkohshme; statusi i pezullimit bazohet vetëm në të dhënat manuale.</p>
         </div>
       </div>
 
@@ -98,7 +111,6 @@ var PlayerStatsSection: React.FC = function() {
           {weeks.map(function(w) { return <option key={w} value={String(w)}>Java {w}</option>; })}
         </select>
         <div className="relative flex-1 min-w-[200px]">
-          a
           <input type="text" value={search} onChange={function(e) { setSearch(e.target.value); }} placeholder="Kerko lojtar..." className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f1830]/100" />
         </div>
       </div>
@@ -149,7 +161,9 @@ var PlayerStatsSection: React.FC = function() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    {suspension.suspended ? (
+                    {!stats.some(s=>s.playerId===p.playerId) ? (
+                      <span className="text-slate-400">—</span>
+                    ) : suspension.suspended ? (
                       <span title={suspension.reason} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold uppercase">
                         I Pezulluar
                       </span>
