@@ -14,6 +14,7 @@ import { calculateLeagueStandings, calculateLiveStandings } from '@/lib/standing
 import type { LiveStandingsRow } from '@/lib/standings';
 import type { ProtocolMatch } from '@/components/ProtocolLiveMatches';
 import { mergeProtocolMatches } from '@/lib/protocolMatches';
+import { aggregateScorers } from '@/lib/aggregateScorers';
 import { getHeadToHeadHistory } from '@/lib/matchHistory';
 
 // CACHE DISABLED: blloko shkrimet e localStorage per cache te madh
@@ -704,44 +705,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return list;
   };
 
-  // Aggregated scorers from goals + manual scorers
-  const getAggregatedScorers = (compId?: string) => {
-    const goalMap: Record<string, { firstName: string; lastName: string; photo: string; teamId: string; goals: number; competitionId: string }> = {};
-    
-    state.goals.forEach(g => {
-      if (g.isOwnGoal) return null;
-      const player = state.players.find(p => p.id === g.playerId);
-      if (!player) return null;
-      const match = state.matches.find(m => m.id === g.matchId);
-      if (!match) return null;
-      if (compId && match.competitionId !== compId) return null;
-      const key = `goal_${g.playerId}_${match.competitionId}`;
-      if (!goalMap[key]) {
-        goalMap[key] = { firstName: player.firstName, lastName: player.lastName, photo: player.photo, teamId: player.teamId, goals: 0, competitionId: match.competitionId };
-      }
-      goalMap[key].goals++;
-    });
-
-    let manualScorers = state.scorers.filter(s => s.isManual);
-    if (compId) manualScorers = manualScorers.filter(s => s.competitionId === compId);
-
-    const result: { firstName: string; lastName: string; photo: string; teamId: string; goals: number; id: string; competitionId: string }[] = [];
-    
-    Object.entries(goalMap).forEach(([key, val]) => {
-      result.push({ ...val, id: key });
-    });
-
-    manualScorers.forEach(s => {
-      const existing = result.find(r => r.firstName === s.firstName && r.lastName === s.lastName && r.teamId === s.teamId && r.competitionId === s.competitionId);
-      if (existing) {
-        existing.goals += s.goals;
-      } else {
-        result.push({ firstName: s.firstName, lastName: s.lastName, photo: s.photo, teamId: s.teamId, goals: s.goals, id: s.id, competitionId: s.competitionId });
-      }
-    });
-
-    return result.sort((a, b) => b.goals - a.goals);
-  };
+  // Merge match-level goal records, public protocol goals, and manual totals conservatively.
+  const getAggregatedScorers = (compId?: string) => aggregateScorers(state.matches, state.players, state.goals, state.scorers, protocolMatches, compId);
 
   // ============ PLAYER OF WEEK ============
   const addPlayerOfWeek = (p: Omit<PlayerOfWeek, 'id'>) => {
