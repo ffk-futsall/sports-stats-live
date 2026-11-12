@@ -58,6 +58,40 @@ function EventList({m}:{m:ProtocolMatch}) {
     {m.phase==='finished'&&<div className="rounded bg-slate-100 px-3 py-2 flex justify-between gap-3 text-sm font-bold text-slate-700"><span>Ndeshja përfundoi</span><span className="tabular-nums">{formatScore(m.scores.final)!=='—'?formatScore(m.scores.final):formatScore(m.scores.live)}</span></div>}
   </div>;
 }
+// The court is an illustration, not a player-tracking feed. Only recorded events are counted.
+function MatchCourt({m,homeLogo,awayLogo}:{m:ProtocolMatch;homeLogo?:string;awayLogo?:string}) {
+  const events=m.events||[];
+  const counts=(side:Side,kind:string,red?:boolean)=>events.filter(e=>e.team===side&&e.kind===kind&&(red===undefined||Boolean(e.sourceRow?.toLowerCase().startsWith('kk'))===red)).length;
+  const metrics=[{label:'Faulle',a:counts('a','foul'),b:counts('b','foul')},{label:'Kart. të verdhë',a:counts('a','card',false),b:counts('b','card',false)},{label:'Kart. të kuq',a:counts('a','card',true),b:counts('b','card',true)}];
+  return <section aria-label="Pamja e ndeshjes live" className="px-3 sm:px-5 pt-4">
+    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="px-3 sm:px-5 py-4">
+        <div className="flex justify-center"><span className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600"><span className={`h-2 w-2 rounded-full ${!['setup','finished'].includes(m.phase)?'bg-red-500':'bg-slate-400'}`} aria-hidden="true"/>{rowPhases[m.phase]||'Ndeshja'}</span></div>
+        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-4">
+          {(['a','b'] as Side[]).map((side,i)=><React.Fragment key={side}>
+            {i===1&&<div className="min-w-[70px] text-center"><div className="text-2xl sm:text-3xl font-bold tabular-nums text-slate-900" aria-label={`Rezultati ${formatScore(m.scores.live)}`}>{formatScore(m.scores.live)}</div>{hasHalf(m)&&formatScore(m.scores.first)!=='—'&&<div className="mt-1 text-sm text-slate-500">Pjesa e parë {formatScore(m.scores.first)}</div>}</div>}
+            <div className={`flex min-w-0 items-center gap-2 ${side==='b'?'flex-row-reverse text-right':''}`}><TeamMark logo={side==='a'?homeLogo:awayLogo}/><span className="text-sm font-bold text-slate-800 break-words">{m.teams[side].name}</span></div>
+          </React.Fragment>)}
+        </div>
+      </div>
+      <div className="grid sm:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] border-t border-slate-200">
+        <div className="p-3 sm:p-4 bg-slate-50">
+          <svg viewBox="0 0 600 310" className="block w-full rounded-md" role="img" aria-label="Ilustrim i fushës së futsallit, pa pozicionim të lojtarëve">
+            <rect width="600" height="310" rx="9" fill="#28745f"/><path fill="#31846b" d="M0 0h75v310H0zm150 0h75v310h-75zm150 0h75v310h-75zm150 0h75v310h-75z"/>
+            <g fill="none" stroke="#d9efe4" strokeWidth="3" opacity=".9"><rect x="18" y="18" width="564" height="274" rx="2"/><path d="M300 18v274"/><circle cx="300" cy="155" r="38"/><circle cx="300" cy="155" r="2" fill="#d9efe4"/><path d="M18 85h20a70 70 0 0 1 0 140H18M582 85h-20a70 70 0 0 0 0 140h20"/><path d="M18 125H5v60h13M582 125h13v60h-13"/><circle cx="98" cy="155" r="2" fill="#d9efe4"/><circle cx="502" cy="155" r="2" fill="#d9efe4"/></g>
+          </svg>
+          <p className="mt-2 text-sm text-slate-600">Fusha e futsallit · ilustrim, jo pozicionim live</p>
+        </div>
+        <div className="p-3 sm:p-4 sm:border-l border-t sm:border-t-0 border-slate-200">
+          <h3 className="text-sm font-bold text-slate-900">Statistikat e regjistruara</h3>
+          <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-sm font-semibold text-slate-600"><span className="truncate" title={m.teams.a.name}>{m.teams.a.name}</span><span> </span><span className="truncate text-right" title={m.teams.b.name}>{m.teams.b.name}</span></div>
+          <dl className="mt-1 divide-y divide-slate-100">{metrics.map(stat=><div key={stat.label} className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 py-2 text-sm"><dd className="font-bold text-slate-900 tabular-nums">{stat.a}</dd><dt className="text-center text-slate-600">{stat.label}</dt><dd className="text-right font-bold text-slate-900 tabular-nums">{stat.b}</dd></div>)}</dl>
+          <p className="mt-2 text-sm text-slate-600">Vetëm ngjarjet e regjistruara në procesverbal.</p>
+        </div>
+      </div>
+    </div>
+  </section>;
+}
 function Lineups({m}:{m:ProtocolMatch}) {
   return <div className="grid sm:grid-cols-2 sm:divide-x divide-slate-200">{(['a','b'] as Side[]).map(side=><section key={side} className="p-4 sm:p-5 border-b sm:border-b-0 border-slate-200 last:border-0">
     <h3 className="font-bold text-slate-900 break-words">{m.teams[side].name}</h3><h4 className="mt-5 mb-2 text-sm font-semibold uppercase tracking-wider text-slate-600">Lojtarët</h4>
@@ -93,7 +127,7 @@ export default function ProtocolLiveMatches({matches}:{matches:ProtocolMatch[]})
         {open&&<div id={`protocol-details-${m.id}`} className="bg-white text-slate-900 border-t border-slate-200">
           <div className="px-4 sm:px-6 pt-3 pb-1 flex items-center justify-between gap-3 text-sm text-slate-600"><span>DETAJET E NDESHJES</span><span className="font-semibold text-slate-700">{phases[m.phase]||'Ndeshja'}</span></div>
           <nav aria-label="Detajet e ndeshjes" className="flex border-b border-slate-200 px-2 sm:px-4">{tabs.map(tab=><button key={tab.id} type="button" aria-pressed={activeTab===tab.id} onClick={()=>setActiveTab(tab.id)} className={`min-h-11 flex-1 px-1 sm:px-4 text-sm font-semibold border-b-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 ${activeTab===tab.id?'text-rose-700 border-rose-600':'text-slate-600 border-transparent hover:text-slate-900'}`}>{tab.label}</button>)}</nav>
-          {activeTab==='summary'?<EventList m={m}/>:activeTab==='lineups'?<Lineups m={m}/>:<Info m={m}/>}
+          {activeTab==='summary'?<><MatchCourt m={m} homeLogo={home?.logo} awayLogo={away?.logo}/><EventList m={m}/></>:activeTab==='lineups'?<Lineups m={m}/>:<Info m={m}/>}
         </div>}
       </article>;
     })}
