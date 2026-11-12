@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Match } from '@/types';
 import { useData } from '@/context/DataContext';
+import { ProtocolDetailsPanel } from './ProtocolLiveMatches';
 
 function formatDate(iso?: string): string {
   if (!iso) return "";
@@ -15,7 +16,7 @@ interface Props {
 }
 
 const MatchDetailModal: React.FC<Props> = ({ match, onClose }) => {
-  const { getTeamById, getGoalsByMatch, players, competitions } = useData();
+  const { getTeamById, getGoalsByMatch, players, competitions, protocolMatches, protocolError } = useData();
   const [activeSection, setActiveSection] = useState<'stats' | 'officials'>('stats');
 
   if (!match) return null;
@@ -24,6 +25,21 @@ const MatchDetailModal: React.FC<Props> = ({ match, onClose }) => {
   const awayTeam = getTeamById(match.awayTeamId);
   const goals = getGoalsByMatch(match.id);
   const comp = competitions.find(c => c.id === match.competitionId);
+
+  const protocol = protocolMatches.filter(p=>p.portalMatchId===match.id && p.phase!=='setup').sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''))[0];
+  if (protocol && match.status !== 'cancelled') {
+    const authoritative = match.status==='finished' && match.protocolResult!=='finished' && match.homeScore != null && match.awayScore != null;
+    const score = authoritative ? {a:String(match.homeScore),b:String(match.awayScore)} : null;
+    const report = score ? {...protocol,phase:'finished',scores:{...protocol.scores,final:score,live:score}} : protocol;
+    return <div role="dialog" aria-modal="true" aria-label="Detajet e ndeshjes" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4" onClick={onClose}>
+      <div className="relative w-full max-w-[760px] max-h-[95vh] overflow-y-auto bg-white rounded-t-xl sm:rounded-xl shadow-xl" onClick={e=>e.stopPropagation()}>
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 bg-white border-b border-slate-200 px-4 py-2"><strong className="text-sm text-slate-800">{comp?.name||'Ndeshja'}</strong><button type="button" onClick={onClose} aria-label="Mbyll" className="h-10 w-10 rounded-lg text-2xl text-slate-700 hover:bg-slate-100 focus-visible:outline focus-visible:outline-blue-600">×</button></div>
+        {authoritative && <p className="px-4 pt-2 text-xs text-slate-600">Rezultati zyrtar i portalit; ngjarjet dhe formacionet janë nga procesverbali.</p>}
+        <ProtocolDetailsPanel key={protocol.id} match={report} homeLogo={homeTeam?.logo} awayLogo={awayTeam?.logo} stale={protocolError}/>
+      </div>
+    </div>;
+  }
+
 
   const getPlayerName = (playerId: string) => {
     const p = players.find(pl => pl.id === playerId);
@@ -44,7 +60,7 @@ const MatchDetailModal: React.FC<Props> = ({ match, onClose }) => {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
+    <div role="dialog" aria-modal="true" aria-label="Detajet e ndeshjes" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
       <div
         className="relative w-full sm:max-w-lg max-h-[95vh] overflow-hidden sm:rounded-2xl rounded-t-2xl border-2 border-[#0f1830]/40 shadow-[0_0_60px_-10px_rgba(30,111,242,0.3)]"
@@ -61,7 +77,7 @@ const MatchDetailModal: React.FC<Props> = ({ match, onClose }) => {
           <div className="relative z-20 flex items-center justify-between px-5 pt-4">
             <div className="w-9" />
             <div className="w-10 h-1 rounded-full bg-gray-300" />
-            <button onClick={onClose} className="w-10 h-10 rounded-xl bg-white border-2 border-gray-200 flex items-center justify-center hover:bg-red-50 hover:border-red-300 transition-all text-gray-500 hover:text-red-500 text-lg font-bold shadow-md"></button>
+            <button aria-label="Mbyll" onClick={onClose} className="w-10 h-10 rounded-xl bg-white border-2 border-gray-200 flex items-center justify-center hover:bg-red-50 hover:border-red-300 transition-all text-gray-500 hover:text-red-500 text-lg font-bold shadow-md">×</button>
           </div>
 
           <div className="relative z-10 px-6 pt-3 pb-6">
