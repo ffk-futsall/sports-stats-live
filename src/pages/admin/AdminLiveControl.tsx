@@ -350,8 +350,8 @@ const AdminLiveControl: React.FC = () => {
       <div>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-800">Fillo Ndeshje</h2>
-          <button onClick={() => setShowStartMatch(false)} className="text-gray-400 hover:text-gray-600">
-            S"
+          <button aria-label="Mbyll" onClick={() => setShowStartMatch(false)} className="text-gray-400 hover:text-gray-600">
+            ×
           </button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
