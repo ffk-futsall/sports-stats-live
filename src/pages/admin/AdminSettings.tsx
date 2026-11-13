@@ -226,7 +226,7 @@ const AdminSettings: React.FC = () => {
               </label>
               <div className="flex gap-2">
                 <button type="submit" className="px-4 py-2 bg-[#0f1830] text-white rounded-lg text-sm hover:bg-[#1c3570]">{editSeasonId ? 'Ruaj' : 'Shto'}</button>
-                <button type="button" onClick={() => { setShowSeasonForm(false); setEditSeasonId(null); }} className="text-gray-400 hover:text-gray-600">S"</button>
+                <button aria-label="Mbyll" type="button" onClick={() => { setShowSeasonForm(false); setEditSeasonId(null); }} className="text-gray-400 hover:text-gray-600">×</button>
               </div>
             </form>
           )}
@@ -293,7 +293,7 @@ const AdminSettings: React.FC = () => {
               </label>
               <div className="flex gap-2">
                 <button type="submit" className="px-4 py-2 bg-[#0f1830] text-white rounded-lg text-sm hover:bg-[#1c3570]">Shto</button>
-                <button type="button" onClick={() => setShowCompForm(false)} className="text-gray-400">S"</button>
+                <button aria-label="Mbyll" type="button" onClick={() => setShowCompForm(false)} className="text-gray-400">×</button>
               </div>
             </form>
           )}
@@ -344,7 +344,7 @@ const AdminSettings: React.FC = () => {
               </div>
               <div className="flex gap-2">
                 <button type="submit" className="px-4 py-2 bg-[#0f1830] text-white rounded-lg text-sm hover:bg-[#1c3570]">Shto</button>
-                <button type="button" onClick={() => setShowEditorForm(false)} className="text-gray-400">S"</button>
+                <button aria-label="Mbyll" type="button" onClick={() => setShowEditorForm(false)} className="text-gray-400">×</button>
               </div>
             </form>
           )}
