@@ -42,16 +42,37 @@ function EventIcon({item}:{item:TimelineItem}) {
   if(item.kind==='timeout')return <Flag aria-label="Time-out" className="w-7 h-4 text-sky-700"/>;
   return <CircleDot aria-label="Faull" className="w-7 h-4 text-slate-400"/>;
 }
+function FoulCounter({team,count}:{team:string;count:number}) {
+  return <div className="flex items-center justify-between gap-3">
+    <span className="min-w-0 truncate text-xs font-medium text-slate-600">{team}</span>
+    <div className="flex flex-wrap justify-end gap-1" aria-label={`${count} faulle`}>
+      {Array.from({length:count},(_,index)=>{
+        const number=index+1;
+        const bonus=number>=5;
+        return <span key={number} title={`${number}. faul${bonus?' · bonus':''}`} aria-label={`${number}. faul${bonus?' · bonus':''}`} className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold tabular-nums text-white ${bonus?'bg-red-600':'bg-sky-600'}`}>{number}</span>;
+      })}
+    </div>
+  </div>;
+}
 function EventList({m}:{m:ProtocolMatch}) {
   const items=timeline(m);
   const groups=[{id:'first',title:'Pjesa e parë'},{id:'second',title:'Pjesa e dytë'},{id:'extra',title:'Koha shtesë'},{id:'penalties',title:'Penalltitë'},{id:'unknown',title:'Ngjarje të tjera'}];
+  const showFoulCounters=m.phase!=='setup'&&m.phase!=='finished';
   return <div className="px-3 sm:px-5 pb-5 pt-3">
     <div className="flex items-center justify-between gap-2 mb-3"><h3 className="text-sm font-bold text-slate-900">Ngjarjet e ndeshjes</h3><span className="text-sm text-slate-500">{items.length} të regjistruara</span></div>
     {!items.length && !hasHalf(m) && <p className="py-8 text-center text-sm text-slate-500">Nuk ka ngjarje të regjistruara ende.</p>}
     {groups.map(({id,title})=>{const rows=items.filter(x=>periodKey(x.period)===id);if(!rows.length && !(id==='first'&&hasHalf(m)))return null;
+      const foulRows=showFoulCounters?rows.filter(x=>x.kind==='foul'):[];
+      const visibleRows=showFoulCounters?rows.filter(x=>x.kind!=='foul'):rows;
       return <section key={id} aria-label={title} className="mb-3">
         <div className="flex justify-between gap-3 rounded bg-slate-100 px-3 py-2 text-sm font-bold text-slate-700"><span>{title}</span>{id==='first'&&hasHalf(m)&&<span>Pushim · {formatScore(m.scores.first)}</span>}</div>
-        {rows.map(item=>{const away=item.team==='b';const title=item.kind==='goal'?(item.player||'Gol'):item.kind==='card'?(item.sourceRow?.startsWith('kk')?'Karton i kuq':'Karton i verdhë'):({foul:'Faull',timeout:'Time-out',substitution:'Zëvendësim'} as Record<string,string>)[item.kind]||'Ngjarje';const detail=[item.kind!=='goal'?item.player:'',item.outgoing?`${item.outgoing}${item.incoming?` → ${item.incoming}`:''}`:'',item.team==='a'?m.teams.a.name:item.team==='b'?m.teams.b.name:''].filter(Boolean).join(' · ');
+        {foulRows.length>0&&<div className="my-2 grid gap-2 rounded-md bg-slate-50 px-3 py-2">
+          {(['a','b'] as const).map(team=>{
+            const count=foulRows.filter(item=>item.team===team).length;
+            return count>0?<FoulCounter key={team} team={m.teams[team].name} count={count}/>:null;
+          })}
+        </div>}
+        {visibleRows.map(item=>{const away=item.team==='b';const title=item.kind==='goal'?(item.player||'Gol'):item.kind==='card'?(item.sourceRow?.startsWith('kk')?'Karton i kuq':'Karton i verdhë'):({foul:'Faull',timeout:'Time-out',substitution:'Zëvendësim'} as Record<string,string>)[item.kind]||'Ngjarje';const detail=[item.kind!=='goal'?item.player:'',item.outgoing?`${item.outgoing}${item.incoming?` → ${item.incoming}`:''}`:'',item.team==='a'?m.teams.a.name:item.team==='b'?m.teams.b.name:''].filter(Boolean).join(' · ');
           return <div key={item.key} className={`flex items-start gap-2 py-2.5 border-b border-slate-100 text-sm ${away?'flex-row-reverse text-right':''}`}>
             <span className="w-8 shrink-0 pt-1 text-slate-500 tabular-nums">{item.minute?`${item.minute}${item.addedTime?`+${item.addedTime}`:''}′`:'—'}</span>
             <span className="flex shrink-0 justify-center items-center w-7 min-h-7"><EventIcon item={item}/></span>
@@ -226,4 +247,4 @@ export default function ProtocolLiveMatches({matches,stale=false}:{matches:Proto
       </article>;
     })}
   </section>)}</div>;
-}
+  }
