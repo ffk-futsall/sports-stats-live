@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useData } from '@/context/DataContext';
 import { Match, MatchStatus, Goal } from '@/types';
 import { Plus, Pencil, Trash2, X, Eye, Target } from 'lucide-react';
@@ -16,7 +16,7 @@ function toIsoDate(dd: string): string {
 }
 
 const AdminMatches: React.FC = () => {
-  const { matches, teams, competitions, players, goals, getActiveSeason, addMatch, updateMatch, deleteMatch, addGoal, deleteGoal, getGoalsByMatch } = useData();
+  const { matches, displayMatches, teams, competitions, players, goals, getActiveSeason, addMatch, updateMatch, deleteMatch, addGoal, deleteGoal, getGoalsByMatch } = useData();
   const activeSeason = getActiveSeason();
   const [filterComp, setFilterComp] = useState<string>('all');
   const [filterWeek, setFilterWeek] = useState<string>('all');
@@ -49,14 +49,14 @@ const AdminMatches: React.FC = () => {
   const activeTeams = teams.filter(t => activeSeason ? t.seasonId === activeSeason.id : true);
 
   const filtered = useMemo(() => {
-    let m = matches.filter(m => activeSeason ? m.seasonId === activeSeason.id : true);
+    let m = displayMatches.filter(m => activeSeason ? m.seasonId === activeSeason.id : true);
     if (filterComp !== 'all') m = m.filter(x => x.competitionId === filterComp);
     if (filterWeek !== 'all') m = m.filter(x => x.week === Number(filterWeek));
     return m.sort((a, b) => {
       if (a.date && b.date) return b.date.localeCompare(a.date);
       return b.week - a.week;
     });
-  }, [matches, activeSeason, filterComp, filterWeek]);
+  }, [displayMatches, activeSeason, filterComp, filterWeek]);
 
   const weeks = [...new Set(matches.filter(m => activeSeason ? m.seasonId === activeSeason.id : true).map(m => m.week))].sort((a, b) => a - b);
 
@@ -520,6 +520,7 @@ const AdminMatches: React.FC = () => {
                       <span>{isCupComp(m.competitionId) ? (cupRounds[m.week] || `R${m.week}`) : `J${m.week}`}</span>
                       {m.date && <span>{toDisplayDate(m.date)}</span>}
                       {m.status === 'live' && <span className="text-red-500 font-bold">LIVE</span>}
+                      {m.status === 'finished' && <span className="text-emerald-700 font-semibold">I përfunduar</span>}
                       {m.isFeaturedLanding && <span className="text-[#0f1830]">LP</span>}
                     </div>
                   </div>
