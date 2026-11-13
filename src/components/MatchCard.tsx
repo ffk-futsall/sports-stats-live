@@ -104,9 +104,9 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, onClick, compact }) => {
               <span className={`${compact ? 'text-base' : 'text-xl'} font-bold text-gray-300`}>VS</span>
             )}
             {isFinished && !compact && (
-              <span className="text-[9px] font-semibold text-emerald-500 uppercase tracking-wider mt-1.5">{match.protocolResult==='finished' ? 'Përfunduar · përkohshëm' : 'E Perfunduar'}</span>
+              <span className="text-[9px] font-semibold text-emerald-500 uppercase tracking-wider mt-1.5">Përfunduar</span>
             )}
-            {compact && match.protocolResult==='finished' && <span className="text-xs text-amber-800 text-center mt-1">Procesverbal · përkohshëm</span>}
+            {compact && isFinished && <span className="text-xs text-emerald-600 text-center mt-1">Përfunduar</span>}
             {compact && (
               <span className="text-[9px] text-gray-400 mt-1">Java {match.week}</span>
             )}

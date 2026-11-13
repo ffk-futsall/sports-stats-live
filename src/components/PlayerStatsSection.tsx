@@ -91,7 +91,7 @@ var PlayerStatsSection: React.FC = function() {
         </div>
         <div>
           <h2 className="text-xl font-bold text-gray-800">Statistikat Individuale</h2>
-          <p className="text-sm text-gray-500">Kartonat e verdha dhe te kuqe per lojtar. Ngjarjet e procesverbalit janë të përkohshme; statusi i pezullimit bazohet vetëm në të dhënat manuale.</p>
+          <p className="text-sm text-gray-500">Kartonat e verdha dhe te kuqe per lojtar. Statusi i pezullimit bazohet vetëm në të dhënat manuale.</p>
         </div>
       </div>
 
