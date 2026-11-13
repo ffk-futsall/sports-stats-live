@@ -16,13 +16,20 @@ function canonical(value){
 }
 function protectedChanged(before,after){return protectedFields.some(key=>JSON.stringify(canonical(before?.[key]??null))!==JSON.stringify(canonical(after?.[key]??null)));}
 function editingLocked(draft){return draft?._editLocked===true || (!!draft?.phase && draft.phase!=='setup');}
+// Origjinat e lejuara per procesverbalin (te ndara me presje te PROTOCOL_ORIGIN; pa "/" ne fund).
+const DEFAULT_PROTOCOL_ORIGINS=['https://procesverbali.urim-ffkfutsall.workers.dev'];
+function allowedOrigins() {
+  const configured=String(process.env.PROTOCOL_ORIGIN||'').split(',').map(o=>o.trim().replace(/\/+$/,'')).filter(Boolean);
+  return [...new Set([...DEFAULT_PROTOCOL_ORIGINS,...configured])];
+}
 function cors(req,res) {
-  const allowed=process.env.PROTOCOL_ORIGIN;
-  if (allowed && req.headers.origin === allowed) {
-    res.setHeader('Access-Control-Allow-Origin',allowed);
+  const origin=req.headers.origin;
+  if (origin && allowedOrigins().includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin',origin);
     res.setHeader('Vary','Origin');
     res.setHeader('Access-Control-Allow-Headers','Authorization, Content-Type');
     res.setHeader('Access-Control-Allow-Methods','GET, POST, PUT, OPTIONS');
+    res.setHeader('Access-Control-Max-Age','86400');
   }
 }
 async function identity(req,res) {
