@@ -167,7 +167,6 @@ const StatistikatPage: React.FC = () => {
         </div>
 
         {protocolError && <p role="status" className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Përditësimi i procesverbaleve nuk është i disponueshëm; statistikat mund të jenë të vjetruara.</p>}
-        {filteredMatches.some(m=>m.protocolResult==='finished') && <p className="mb-4 text-sm text-slate-600">Statistikat përfshijnë edhe rezultate të përkohshme nga procesverbalet e publikuara.</p>}
         {/* Scorecard row - 6 cards */}
         <div style={Object.assign({}, { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '24px' })}>
           {[

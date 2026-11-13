@@ -285,14 +285,14 @@ var AdminEditors: React.FC = function() {
                       {ed.status === 'pending' && (
                         <>
                           <button onClick={function() { handleApprove(ed.id); }} className="p-1.5 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors" title="Aprovo">S</button>
-                          <button onClick={function() { handleReject(ed.id); }} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Refuzo">S"</button>
+                          <button onClick={function() { handleReject(ed.id); }} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Refuzo">×</button>
                         </>
                       )}
                       {ed.status === 'rejected' && (
                         <button onClick={function() { handleApprove(ed.id); }} className="p-1.5 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors" title="Aprovo">S</button>
                       )}
                       {ed.status === 'approved' && (
-                        <button onClick={function() { handleReject(ed.id); }} className="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg transition-colors" title="Pezullo">S"</button>
+                        <button onClick={function() { handleReject(ed.id); }} className="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg transition-colors" title="Pezullo">×</button>
                       )}
                       <button onClick={function() { handleEdit(ed); }} className="p-1.5 text-gray-400 hover:text-[#0f1830] hover:bg-[#0f1830]/10 rounded-lg transition-colors" title="Edito"></button>
                       <button onClick={function() { handleDelete(ed.id); }} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Fshi">S</button>

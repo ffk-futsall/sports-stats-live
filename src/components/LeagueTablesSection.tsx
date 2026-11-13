@@ -41,8 +41,8 @@ const ScorerModal: React.FC<{ scorer: ScorerModalData; onClose: () => void }> = 
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[150px] h-[30px] bg-[#0f1830]/5 blur-2xl" />
 
         {/* Close */}
-        <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="absolute top-4 right-4 z-[110] w-10 h-10 rounded-xl bg-white border-2 border-gray-200 flex items-center justify-center hover:bg-red-50 hover:border-red-300 transition-all text-gray-500 hover:text-red-500 text-lg font-bold shadow-md">
-          Ò
+        <button type="button" aria-label="Mbyll" onClick={(e) => { e.stopPropagation(); onClose(); }} className="absolute top-4 right-4 z-[110] w-10 h-10 rounded-xl bg-white border-2 border-gray-200 flex items-center justify-center hover:bg-red-50 hover:border-red-300 transition-all text-gray-500 hover:text-red-500 text-lg font-bold shadow-md">
+          ×
         </button>
 
         {/* Player Header */}

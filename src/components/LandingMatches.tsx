@@ -148,7 +148,7 @@ const LandingMatches: React.FC<LandingMatchesProps> = ({ initialTab = 'upcoming'
           </div>
         </div>
 
-        {match.protocolResult==='finished'&&<div className="px-4 pt-2 text-xs text-amber-800">Përfunduar në procesverbal · përkohshëm</div>}
+        {match.protocolResult==='finished'&&<div className="px-4 pt-2 text-xs text-amber-800">Përfunduar</div>}
         {/* Main row: home - score - away */}
         <div className="flex items-center justify-between pl-4 pr-4 py-4">
           {/* Home */}

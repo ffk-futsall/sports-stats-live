@@ -118,7 +118,7 @@ const MatchDetailModal: React.FC<Props> = ({ match, onClose }) => {
                 {isFinished && (
                   <div className="flex items-center gap-1.5 mb-3 px-3 py-1 bg-emerald-500/10 rounded-lg border border-emerald-200">
                     <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">{match.protocolResult==='finished'?'Procesverbal · përkohshëm':'Perfunduar'}</span>
+                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Përfunduar</span>
                   </div>
                 )}
                 {isPlanned && (
