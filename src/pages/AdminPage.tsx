@@ -23,6 +23,7 @@ import AdminNormativeActs from './admin/AdminNormativeActs';
 import AdminShorti from './admin/AdminShorti';
 import AdminDocuments from './admin/AdminDocuments';
 import AdminProtocolDelegates from './admin/AdminProtocolDelegates';
+import { downloadLocalBackup } from '@/lib/localBackup';
 const AdminPage: React.FC = () => {
   const { isAuthenticated, isAdmin, isEditor, currentUser, loading } = useAuth();
   const navigate = useNavigate();
@@ -145,6 +146,16 @@ const AdminPage: React.FC = () => {
         {/* Dashboard */}
         {activeTab === 'dashboard' && (
           <div>
+            {isAdmin && <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+              <h2 className="font-semibold">Kopje e të dhënave lokale</h2>
+              <p className="mt-1">Shkarko një kopje nga ky shfletues për migrimin. Nuk përfshin fjalëkalimet e editorëve dhe nuk zëvendëson kopjen e databazës. Ruaje skedarin në vend privat.</p>
+              <button type="button" className="mt-3 rounded-lg bg-[#0f1830] px-4 py-2 font-medium text-white" onClick={() => {
+                try {
+                  const backup = downloadLocalBackup();
+                  if (backup.errors.length) window.alert('Kopja u shkarkua, por disa të dhëna nuk u lexuan: ' + backup.errors.join(', ') + '. Mos i fshini të dhënat e shfletuesit.');
+                } catch { window.alert('Kopja nuk u shkarkua. Mos i fshini të dhënat e shfletuesit.'); }
+              }}>Shkarko kopjen lokale</button>
+            </div>}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <DashCard label="Skuadra" value={activeTeams.length} color="bg-[#0f1830]/10 text-[#0f1830]" />
               <DashCard label="Ndeshje" value={activeMatches.length} color="bg-green-50 text-green-600" />
