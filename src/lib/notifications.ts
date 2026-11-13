@@ -43,9 +43,7 @@ export const pushNotifications = {
       }
 
       const json = subscription.toJSON();
-      const apiBase = window.location.origin.includes('ffk-futsal.com')
-        ? 'https://www.ffk-futsal.com/api/push-subscribe'
-        : '/api/push-subscribe';
+      const apiBase = '/api/push-subscribe';
 
       await fetch(apiBase, {
         method: 'POST',
@@ -72,9 +70,7 @@ export const pushNotifications = {
       if (subscription) {
         const endpoint = subscription.endpoint;
         await subscription.unsubscribe();
-        const apiBase = window.location.origin.includes('ffk-futsal.com')
-          ? 'https://www.ffk-futsal.com/api/push-subscribe'
-          : '/api/push-subscribe';
+        const apiBase = '/api/push-subscribe';
         await fetch(apiBase, {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
