@@ -109,7 +109,7 @@ var DecisionsSection: React.FC = function() {
                 </div>
                 <h3 className="text-lg font-bold text-gray-800">Detajet e Vendimit</h3>
               </div>
-              <button onClick={function() { setSelectedDecision(null); }} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">S"</button>
+              <button aria-label="Mbyll" onClick={function() { setSelectedDecision(null); }} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">×</button>
             </div>
             <div className="p-6 space-y-4">
               <div>
