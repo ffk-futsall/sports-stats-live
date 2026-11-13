@@ -49,8 +49,8 @@ const ScorerPopup: React.FC<{ scorer: ScorerData; onClose: () => void }> = ({ sc
             <div className="absolute -top-20 -right-20 w-60 h-60 bg-[#0f1830]/20 rounded-full blur-3xl" />
             <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-[#0066CC]/20 rounded-full blur-3xl" />
           </div>
-          <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="absolute top-4 right-4 z-[110] w-8 h-8 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-colors">
-            S"
+          <button type="button" aria-label="Mbyll" onClick={(e) => { e.stopPropagation(); onClose(); }} className="absolute top-4 right-4 z-[110] w-8 h-8 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white text-xl font-semibold hover:bg-white/20 transition-colors">
+            ×
           </button>
           <div className="relative z-10 text-center">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-400/20 backdrop-blur-sm rounded-full mb-4">
