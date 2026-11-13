@@ -1,9 +1,18 @@
-﻿import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
-export const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+let client = null;
+function getClient() {
+  if (!client) {
+    client = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  }
+  return client;
+}
+// Krijohet vetëm kur përdoret për herë të parë (pas leximit të env).
+export const supabase = new Proxy({}, {
+  get(_t, prop) { const c = getClient(); const v = c[prop]; return typeof v === 'function' ? v.bind(c) : v; },
+});
 
 export const DEFAULT_BLOB = {
   seasons: [], competitions: [], teams: [], players: [], matches: [], goals: [],

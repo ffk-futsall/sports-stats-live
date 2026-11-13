@@ -1,12 +1,17 @@
 import { requireAdmin } from './_adminAuth.js';
-import webpush from 'web-push';
 import { supabase } from './_supabaseClient.js';
 
-webpush.setVapidDetails(
-  'mailto:info@ffk-futsall.com',
-  process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
-);
+let webpushPromise = null;
+async function getWebPush() {
+  if (!webpushPromise) {
+    webpushPromise = import('web-push').then((m) => {
+      const webpush = m.default || m;
+      webpush.setVapidDetails('mailto:info@ffk-futsall.com', process.env.VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
+      return webpush;
+    });
+  }
+  return webpushPromise;
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -22,6 +27,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    const webpush = await getWebPush();
     const { data: subs, error } = await supabase.from('push_subscriptions').select('*');
     if (error) throw error;
 
