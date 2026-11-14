@@ -66,6 +66,13 @@ export default async function handler(req,res) {
       const {data,error:e}=await supabase.from('protocol_assignments').update({archived_at:new Date().toISOString(),published:false,updated_at:new Date().toISOString()}).eq('id',clean(body.assignmentId)).is('archived_at',null).select('id').maybeSingle();
       if(e)throw e;if(!data)return error(res,404,'Caktimi nuk u gjet.');return res.status(200).json({ok:true});
     }
+    if (body.action === 'archive-match') {
+      // Fshirja e ndeshjes nga portali: arkivo te gjitha caktimet/procesverbalet e saj qe te zhduket nga publiku.
+      const matchId=clean(body.matchId,100);
+      if(!matchId)return error(res,400,'Ndeshja mungon.');
+      const {data,error:e}=await supabase.from('protocol_assignments').update({archived_at:new Date().toISOString(),published:false,updated_at:new Date().toISOString()}).eq('portal_match_id',matchId).is('archived_at',null).select('id');
+      if(e)throw e;return res.status(200).json({ok:true,archived:(data||[]).length});
+    }
     if (body.action === 'publication') {
       if(typeof body.blocked!=='boolean')return error(res,400,'Veprimi është i pavlefshëm.');
       const change={publication_blocked:body.blocked,updated_at:new Date().toISOString()};if(body.blocked)change.published=false;

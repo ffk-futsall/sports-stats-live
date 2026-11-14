@@ -122,7 +122,8 @@ interface DataContextType extends DataState {
   deletePlayer: (id: string) => void;
   getPlayersByTeam: (teamId: string) => Player[];
   // Matches
-  addMatch: (m: Omit<Match, 'id'>) => string;
+  addMatch: (m: Omit<Match, 'id'>, forcedId?: string) => string;
+  dismissProtocolMatch: (portalMatchId: string) => void;
   updateMatch: (m: Match) => void;
   deleteMatch: (id: string) => void;
   getMatchesByCompetition: (compId: string) => Match[];
@@ -621,8 +622,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const getPlayersByTeam = (teamId: string) => state.players.filter(p => p.teamId === teamId);
 
   // ============ MATCHES ============
-  const addMatch = (m: Omit<Match, 'id'>): string => {
-    const newMatch: Match = { ...m, id: uuidv4() };
+  // forcedId: kur një procesverbal pa ndeshje në portal regjistrohet, ndeshja merr ID-në e tij (lidhje automatike).
+  const addMatch = (m: Omit<Match, 'id'>, forcedId?: string): string => {
+    const newMatch: Match = { ...m, id: forcedId || uuidv4() };
     update(prev => ({ ...prev, matches: [...prev.matches, newMatch] }));
     dbMatches.add(newMatch);
     
@@ -658,6 +660,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     update(prev => ({ ...prev, matches: prev.matches.filter(x => x.id !== id) }));
     dbMatches.delete(id);
   };
+
+  // Largon menjëherë procesverbalin nga pamja publike (serveri e arkivon veçmas).
+  const dismissProtocolMatch = (portalMatchId: string) => setProtocolMatches(prev => prev.filter(p => p.portalMatchId !== portalMatchId));
 
   const getMatchesByCompetition = (compId: string) => state.matches.filter(m => m.competitionId === compId);
   const getMatchesByWeek = (compId: string, week: number) => state.matches.filter(m => m.competitionId === compId && m.week === week);
@@ -875,7 +880,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     addCompetition, updateCompetition, deleteCompetition,
     addTeam, updateTeam, deleteTeam, clearAllTeams, getTeamById, getTeamsByCompetition,
     addPlayer, updatePlayer, deletePlayer, getPlayersByTeam,
-    addMatch, updateMatch, deleteMatch, getMatchesByCompetition, getMatchesByWeek, getFeaturedMatches,
+    addMatch, dismissProtocolMatch, updateMatch, deleteMatch, getMatchesByCompetition, getMatchesByWeek, getFeaturedMatches,
     addGoal, deleteGoal, getGoalsByMatch,
     addScorer, updateScorer, deleteScorer, getTopScorers,
     getAggregatedScorers,

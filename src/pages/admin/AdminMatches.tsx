@@ -2,6 +2,18 @@ import React, { useState, useMemo } from 'react';
 import { useData } from '@/context/DataContext';
 import { Match, MatchStatus, Goal } from '@/types';
 import { Plus, Pencil, Trash2, X, Eye, Target } from 'lucide-react';
+import { archiveProtocolForMatch } from '@/lib/protocolAdmin';
+import type { ProtocolMatch } from '@/components/ProtocolLiveMatches';
+
+const normText = (v?: string) => (v || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+const protoScore = (p: ProtocolMatch) => {
+  const num = (v: unknown) => (/^\d+$/.test(String(v ?? '').trim()) ? Number(v) : undefined);
+  for (const sc of [p.phase === 'finished' ? p.scores?.final : undefined, p.scores?.live]) {
+    const a = num(sc?.a), b = num(sc?.b);
+    if (a !== undefined && b !== undefined) return { a, b };
+  }
+  return null;
+};
 
 // Konvertim datash: DB = yyyy-mm-dd, UI = dd/mm/yyyy
 function toDisplayDate(iso: string): string {
@@ -16,7 +28,7 @@ function toIsoDate(dd: string): string {
 }
 
 const AdminMatches: React.FC = () => {
-  const { matches, displayMatches, teams, competitions, players, goals, getActiveSeason, addMatch, updateMatch, deleteMatch, addGoal, deleteGoal, getGoalsByMatch } = useData();
+  const { matches, displayMatches, teams, competitions, players, goals, getActiveSeason, addMatch, updateMatch, deleteMatch, protocolMatches, dismissProtocolMatch, isLoading, addGoal, deleteGoal, getGoalsByMatch } = useData();
   const activeSeason = getActiveSeason();
   const [filterComp, setFilterComp] = useState<string>('all');
   const [filterWeek, setFilterWeek] = useState<string>('all');
@@ -31,6 +43,9 @@ const AdminMatches: React.FC = () => {
     leg3: { enabled: false, homeScore: '', awayScore: '', date: '', time: '' },
   });
   const [editId, setEditId] = useState<string | null>(null);
+  // ID e procesverbalit pa ndeshje në portal që po regjistrohet (ndeshja e re merr këtë ID = lidhje automatike)
+  const [orphanId, setOrphanId] = useState<string | null>(null);
+  const [notice, setNotice] = useState('');
   const [goalsMatchId, setGoalsMatchId] = useState<string | null>(null);
 
   const emptyForm = {
@@ -59,6 +74,62 @@ const AdminMatches: React.FC = () => {
   }, [displayMatches, activeSeason, filterComp, filterWeek]);
 
   const weeks = [...new Set(matches.filter(m => activeSeason ? m.seasonId === activeSeason.id : true).map(m => m.week))].sort((a, b) => a - b);
+
+  // Procesverbale të publikuara që nuk kanë ndeshje në portal (p.sh. ndeshja u fshi më parë).
+  // Shfaqen këtu që admini t'i regjistrojë/editojë ose t'i fshijë përfundimisht.
+  const orphans = useMemo(() => {
+    if (isLoading) return [] as ProtocolMatch[];
+    const latest = new Map<string, ProtocolMatch>();
+    for (const p of protocolMatches) {
+      if (!p.portalMatchId || p.phase === 'setup') continue;
+      const old = latest.get(p.portalMatchId);
+      if (!old || (p.updatedAt || '') > (old.updatedAt || '')) latest.set(p.portalMatchId, p);
+    }
+    const ids = new Set(matches.map(m => m.id));
+    return [...latest.values()].filter(p => !ids.has(p.portalMatchId));
+  }, [protocolMatches, matches, isLoading]);
+  const compForProtocol = (p: ProtocolMatch) => activeComps.find(c => normText(c.name) === normText(p.competition));
+  const visibleOrphans = orphans.filter(p => {
+    if (filterComp !== 'all' && compForProtocol(p)?.id !== filterComp) return false;
+    if (filterWeek !== 'all' && Number(p.round) !== Number(filterWeek)) return false;
+    return true;
+  });
+
+  const removeMatch = async (id: string, hasProtocol: boolean) => {
+    const text = hasProtocol
+      ? 'Fshi ndeshjen? Rezultati nga procesverbali do të largohet edhe nga "Të luajtura" dhe procesverbali arkivohet.'
+      : 'Fshi ndeshjen?';
+    if (!confirm(text)) return;
+    setNotice('');
+    deleteMatch(id);
+    try {
+      const n = await archiveProtocolForMatch(id);
+      dismissProtocolMatch(id);
+      if (n > 0) setNotice('Ndeshja u fshi dhe procesverbali i saj u largua nga faqja publike.');
+    } catch (e) {
+      setNotice('Ndeshja u fshi, por procesverbali nuk u arkivua: ' + (e as Error).message + ' Provoni përsëri nga rreshti "Vetëm në procesverbal".');
+    }
+  };
+
+  const handleEditOrphan = (p: ProtocolMatch) => {
+    const comp = compForProtocol(p);
+    const home = activeTeams.find(t => normText(t.name) === normText(p.teams?.a?.name));
+    const away = activeTeams.find(t => normText(t.name) === normText(p.teams?.b?.name));
+    const sc = protoScore(p);
+    setForm({
+      ...emptyForm,
+      competitionId: comp?.id || '', week: Number(p.round) > 0 ? Number(p.round) : 1,
+      date: /^\d{4}-\d{2}-\d{2}$/.test(p.matchDate || '') ? p.matchDate : '', time: p.startTime || '', venue: p.venue || '',
+      homeTeamId: home?.id || '', awayTeamId: away?.id || '',
+      homeScore: sc ? String(sc.a) : '', awayScore: sc ? String(sc.b) : '',
+      status: p.phase === 'finished' ? 'finished' : 'live',
+    });
+    setEditId(null);
+    setOrphanId(p.portalMatchId);
+    setShowForm(true);
+    if (!comp || !home || !away) setNotice('Kompeticioni ose skuadrat nuk u gjetën automatikisht. Zgjidhini manualisht para ruajtjes.');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const cupRounds = { 1: 'Raundi 1', 2: 'Cerekfinalet', 3: 'Gjysmefinalet', 4: 'Finalja' };
   const isCupComp = (cid) => competitions.find(c => c.id === cid)?.type === 'kupa';
@@ -91,7 +162,7 @@ const AdminMatches: React.FC = () => {
   };
 
   const resetForm = () => {
-    setForm(emptyForm); setEditId(null); setShowForm(false);
+    setForm(emptyForm); setEditId(null); setOrphanId(null); setShowForm(false);
     setCupLegs({
       leg1: { enabled: false, homeScore: '', awayScore: '', date: '', time: '' },
       leg2: { enabled: false, homeScore: '', awayScore: '', date: '', time: '' },
@@ -129,6 +200,10 @@ const AdminMatches: React.FC = () => {
     };
     if (editId) {
       updateMatch({ id: editId, ...matchData } as Match);
+      resetForm();
+    } else if (orphanId) {
+      addMatch(matchData as Omit<Match, 'id'>, orphanId);
+      setNotice('Ndeshja u regjistrua në portal dhe u lidh me procesverbalin.');
       resetForm();
     } else if (selectedIsCup && (cupLegs.leg1.enabled || cupLegs.leg2.enabled || cupLegs.leg3.enabled)) {
       // Create multiple cup leg matches
@@ -489,6 +564,31 @@ const AdminMatches: React.FC = () => {
         </div>
       )}
 
+      {notice && <p role="status" className="mb-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-900 p-3 text-sm">{notice} <button className="underline ml-2" onClick={() => setNotice('')}>Mbyll</button></p>}
+
+      {visibleOrphans.length > 0 && (
+        <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 overflow-hidden">
+          <p className="px-4 py-2 text-xs font-semibold text-amber-900">Vetëm në procesverbal ({visibleOrphans.length}): këto rezultate shfaqen publikisht por nuk janë regjistruar si ndeshje në portal. Edito për t'i regjistruar ose fshi për t'i larguar.</p>
+          {visibleOrphans.map(p => {
+            const sc = protoScore(p);
+            return (
+              <div key={p.portalMatchId} className="flex items-center justify-between gap-3 px-4 py-3 border-t border-amber-200 bg-white">
+                <div className="min-w-0 text-sm">
+                  <span className="font-medium text-gray-800">{p.teams?.a?.name || '?'}</span>
+                  <span className="mx-2 text-gray-400">{sc ? `${sc.a} - ${sc.b}` : 'vs'}</span>
+                  <span className="font-medium text-gray-800">{p.teams?.b?.name || '?'}</span>
+                  <span className="ml-3 text-xs text-gray-400">{p.competition}{p.round ? ` · J${p.round}` : ''}{p.matchDate ? ` · ${toDisplayDate(p.matchDate)}` : ''} · {p.phase === 'finished' ? 'I përfunduar' : 'Live'}</span>
+                </div>
+                <div className="flex gap-1 flex-shrink-0">
+                  <button onClick={() => handleEditOrphan(p)} className="p-1.5 text-gray-400 hover:text-[#0f1830]" title="Edito dhe regjistro në portal"><Pencil className="w-4 h-4" /></button>
+                  <button onClick={() => removeMatch(p.portalMatchId, true)} className="p-1.5 text-gray-400 hover:text-red-500" title="Fshi"><Trash2 className="w-4 h-4" /></button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Match List */}
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         {filtered.length === 0 ? (
@@ -521,13 +621,14 @@ const AdminMatches: React.FC = () => {
                       {m.date && <span>{toDisplayDate(m.date)}</span>}
                       {m.status === 'live' && <span className="text-red-500 font-bold">LIVE</span>}
                       {m.status === 'finished' && <span className="text-emerald-700 font-semibold">I përfunduar</span>}
+                      {m.protocolResult && <span className="text-amber-700 font-semibold" title="Rezultati vjen nga procesverbali. Edito për ta bërë rezultat zyrtar.">Nga procesverbali</span>}
                       {m.isFeaturedLanding && <span className="text-[#0f1830]">LP</span>}
                     </div>
                   </div>
                   <div className="flex gap-1 flex-shrink-0">
                     <button onClick={() => setGoalsMatchId(m.id)} className="p-1.5 text-gray-400 hover:text-green-600" title="Golat"><Target className="w-4 h-4" /></button>
                     <button onClick={() => handleEdit(m)} className="p-1.5 text-gray-400 hover:text-[#0f1830]"><Pencil className="w-4 h-4" /></button>
-                    <button onClick={() => { if (confirm('Fshi ndeshjen?')) deleteMatch(m.id); }} className="p-1.5 text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={() => removeMatch(m.id, !!m.protocolResult)} className="p-1.5 text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
               );
