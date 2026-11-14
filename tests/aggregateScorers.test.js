@@ -17,3 +17,11 @@ test('latest report wins; portal goal entries and manual totals avoid duplicated
  const manual=[{id:'s',firstName:'Arber',lastName:'Hoxha',teamId:'a',competitionId:'super',photo:'',goals:3,isManual:true}];
  assert.equal(aggregateScorers(matches,[player],[],manual,reports)[0].goals,3);
 });
+test('manual override replaces portal goals; 0-goal manual entry hides a scorer',()=>{
+ const player={id:'p',firstName:'Arber',lastName:'Hoxha',teamId:'a',photo:''};
+ const recorded=[{matchId:'one',playerId:'p',teamId:'a',isOwnGoal:false}];
+ const m=(goals)=>[{id:'s',firstName:'Arber',lastName:'Hoxha',teamId:'a',competitionId:'super',photo:'',goals,isManual:true}];
+ assert.equal(aggregateScorers(matches,[player],recorded,m(4),[])[0].goals,4);
+ assert.equal(aggregateScorers(matches,[player],recorded,m(0),[]).length,0);
+ assert.equal(aggregateScorers(matches,[player],recorded,m(4),[],undefined,{ignoreManual:true})[0].goals,1);
+});

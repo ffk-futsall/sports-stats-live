@@ -158,7 +158,7 @@ interface DataContextType extends DataState {
   // Standings
   calculateStandings: (compId: string) => LiveStandingsRow[];
   // Aggregated scorers
-  getAggregatedScorers: (compId?: string) => { firstName: string; lastName: string; photo: string; teamId: string; goals: number; id: string; competitionId: string }[];
+  getAggregatedScorers: (compId?: string, opts?: { ignoreManual?: boolean }) => { firstName: string; lastName: string; photo: string; teamId: string; goals: number; id: string; competitionId: string }[];
   // Head to head
   getHeadToHead: (teamAId: string, teamBId: string) => { matches: Match[]; teamAWins: number; teamBWins: number; draws: number; teamAGoals: number; teamBGoals: number };
   // Refresh
@@ -706,7 +706,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Merge match-level goal records, public protocol goals, and manual totals conservatively.
-  const getAggregatedScorers = (compId?: string) => aggregateScorers(state.matches, state.players, state.goals, state.scorers, protocolMatches, compId);
+  const getAggregatedScorers = (compId?: string, opts?: { ignoreManual?: boolean }) => aggregateScorers(state.matches, state.players, state.goals, state.scorers, protocolMatches, compId, opts);
 
   // ============ PLAYER OF WEEK ============
   const addPlayerOfWeek = (p: Omit<PlayerOfWeek, 'id'>) => {

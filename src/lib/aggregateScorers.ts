@@ -8,9 +8,13 @@ const personKey=(team:string,competition:string,name:string)=>`${team}\u0000${co
 // Protocol scorers are a public projection. A match with portal goal entries uses
 // those entries instead. Manual season totals win over a matching protocol name:
 // their unattributed totals cannot safely be added without risking duplicates.
-export function aggregateScorers(matches:Match[], players:Player[], goals:Goal[], manual:Scorer[], protocols:ProtocolMatch[], compId?:string):Entry[] {
+// The same rule lets an admin edit a protocol/portal scorer: the edit is stored as a
+// manual entry that replaces every automatic count for that person (team+competition+name).
+// A manual entry with 0 goals hides the automatic entry (used for "delete" and renames).
+export function aggregateScorers(matches:Match[], players:Player[], goals:Goal[], manual:Scorer[], protocols:ProtocolMatch[], compId?:string, opts?:{ignoreManual?:boolean}):Entry[] {
   const results=new Map<string,Entry>();
   const matchById=new Map(matches.map(m=>[m.id,m]));
+  if(opts?.ignoreManual)manual=[];
   const manualKeys=new Set(manual.filter(s=>s.isManual).map(s=>personKey(s.teamId,s.competitionId,`${s.firstName} ${s.lastName}`)));
   const add=(teamId:string,competitionId:string,firstName:string,lastName:string,photo:string,id:string,amount:number)=>{
     if(compId && competitionId!==compId)return;
@@ -21,7 +25,7 @@ export function aggregateScorers(matches:Match[], players:Player[], goals:Goal[]
   for(const g of goals){
     if(g.isOwnGoal)continue;
     const player=players.find(p=>p.id===g.playerId), match=matchById.get(g.matchId);
-    if(player&&match)add(player.teamId,match.competitionId,player.firstName,player.lastName,player.photo,`goal_${player.id}_${match.competitionId}`,1);
+    if(player&&match&&!manualKeys.has(personKey(player.teamId,match.competitionId,`${player.firstName} ${player.lastName}`)))add(player.teamId,match.competitionId,player.firstName,player.lastName,player.photo,`goal_${player.id}_${match.competitionId}`,1);
   }
   const goalMatchIds=new Set(goals.map(g=>g.matchId));
   const latest=new Map<string,ProtocolMatch>();
@@ -40,5 +44,5 @@ export function aggregateScorers(matches:Match[], players:Player[], goals:Goal[]
     }
   }
   for(const s of manual)if(s.isManual)add(s.teamId,s.competitionId,s.firstName,s.lastName,s.photo,s.id,s.goals);
-  return [...results.values()].sort((a,b)=>b.goals-a.goals);
+  return [...results.values()].filter(e=>e.goals>0).sort((a,b)=>b.goals-a.goals);
 }
