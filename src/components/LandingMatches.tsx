@@ -197,20 +197,8 @@ const LandingMatches: React.FC<LandingMatchesProps> = ({ initialTab = 'upcoming'
   const kupaRoundNames: Record<number, string> = { 1: 'Raundi 1', 2: 'Cerekfinalet', 3: 'Gjysmefinalet', 4: 'Finalja' };
   const MatchGrid: React.FC<{ matchList: Match[]; title: string; week?: number; isKupa?: boolean }> = ({ matchList, title, week, isKupa }) => {
     const weekLabel = isKupa && week ? (kupaRoundNames[week] || `Raundi ${week}`) : !isKupa && week ? `Java ${week}` : ''; // was: isKupa && week ? (kupaRoundNames[week] || `Raundi ${week}`) : week ? `Java ${week}` : '';
-    if (matchList.length === 0) {
-      return (
-        <div className="mb-6">
-          <h3 className="text-base font-bold text-gray-800 mb-3 flex items-center gap-2">
-            <span className="w-1 h-5 bg-[#0f1830] rounded-full" />
-            {title}
-            {weekLabel && <span className="text-[10px] font-bold text-[#0f1830] bg-[#0f1830]/10 px-2.5 py-0.5 rounded-full border border-[#0f1830]/15">{weekLabel}</span>}
-          </h3>
-          <p className="text-gray-400 text-xs text-center py-6 bg-white rounded-xl border border-gray-100">
-            Nuk ka ndeshje per kete kategori.
-          </p>
-        </div>
-      );
-    }
+    // Mos shfaq kategorinë (Superliga / Liga e Parë / Kupa) nëse nuk ka ndeshje
+    if (matchList.length === 0) return null;
     return (
       <div className="mb-6">
         <h3 className="text-base font-bold text-gray-800 mb-3 flex items-center gap-2">
