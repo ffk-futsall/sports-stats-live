@@ -4,6 +4,8 @@ import { Match } from '@/types';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import MatchDetailModal from '@/components/MatchDetailModal';
+import KupaBracketView from '@/components/KupaBracketView';
+import { normalizeSlots, KUPA_ROUND_NAMES } from '@/lib/kupaBracket';
 
 function formatDate(iso?: string): string {
   if (!iso) return '';
@@ -25,10 +27,10 @@ interface Tie {
 }
 
 const KupaPage: React.FC = () => {
-  const { competitions, displayMatches:matches, getActiveSeason, getTeamById, getAggregatedScorers, getGoalsByMatch, protocolError } = useData();
+  const { competitions, displayMatches:matches, getActiveSeason, getTeamById, getAggregatedScorers, getGoalsByMatch, protocolError, settings } = useData();
   const activeSeason = getActiveSeason();
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
-  const [activeTab, setActiveTab] = useState<'bracket' | 'golashenuesit'>('bracket');
+  const [activeTab, setActiveTab] = useState<'skema' | 'bracket' | 'golashenuesit'>('skema');
 
   const comp = useMemo(() =>
     competitions.find(c => c.type === 'kupa' && (activeSeason ? c.seasonId === activeSeason.id : true)),
@@ -103,6 +105,12 @@ const KupaPage: React.FC = () => {
         return { round: Number(round), ties };
       });
   }, [cupMatches]);
+
+  const bracketSlots = useMemo(() => normalizeSlots(settings?.kupaBracket?.slots), [settings]);
+  const hasBracket = bracketSlots.some(Boolean);
+  const upcoming = useMemo(() => cupMatches
+    .filter(m => m.status === 'planned' || m.status === 'live')
+    .sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999') || (a.time || '').localeCompare(b.time || '')), [cupMatches]);
 
   const roundNames: Record<number, string> = {
     1: 'Raundi 1',
@@ -179,7 +187,8 @@ const KupaPage: React.FC = () => {
 
         <div className="flex gap-2 mb-8">
           {[
-            { key: 'bracket' as const, label: 'Bracket' },
+            { key: 'skema' as const, label: 'Skema' },
+            { key: 'bracket' as const, label: 'Ndeshjet' },
             { key: 'golashenuesit' as const, label: 'Golashenuesit' },
           ].map(t => (
             <button
@@ -193,6 +202,31 @@ const KupaPage: React.FC = () => {
             </button>
           ))}
         </div>
+
+        {activeTab === 'skema' && (
+          <>
+            {hasBracket ? (
+              <KupaBracketView slots={bracketSlots} cupMatches={cupMatches} onSelect={setSelectedMatch} />
+            ) : (
+              <p className="text-gray-400 text-center py-8">Shorti i Kupes nuk eshte publikuar ende.</p>
+            )}
+            <div className="mt-8">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="w-1 h-4 bg-[#0f1830] rounded-full" />
+                <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider">Ndeshjet qe do te zhvillohen</h3>
+              </div>
+              {upcoming.length === 0 ? (
+                <p className="text-gray-400 text-sm py-4">Nuk ka ndeshje te caktuara per momentin.</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {upcoming.map(m => (
+                    <LegRow key={m.id} match={m} legLabel={KUPA_ROUND_NAMES[(m.week || 1) - 1] || `Raundi ${m.week}`} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
 
         {activeTab === 'bracket' && (
           rounds.length === 0 ? (

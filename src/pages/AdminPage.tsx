@@ -19,6 +19,7 @@ import AdminLiveControl from './admin/AdminLiveControl';
 import AdminVideos from './admin/AdminVideos';
 import AdminNews from './admin/AdminNews';
 import AdminPlayoff from './admin/AdminPlayoff';
+import AdminKupaShorti from './admin/AdminKupaShorti';
 import AdminNormativeActs from './admin/AdminNormativeActs';
 import AdminShorti from './admin/AdminShorti';
 import AdminDocuments from './admin/AdminDocuments';
@@ -83,6 +84,7 @@ const AdminPage: React.FC = () => {
     { key: 'playoff', label: 'PlayOff', icon: null, editorAccess: false },
     { key: 'normativeActs', label: 'Aktet Normative', icon: null, editorAccess: false },
     { key: 'shorti', label: 'Shorti', icon: null, editorAccess: false },
+    { key: 'kupaShorti', label: 'Shorti i Kupës', icon: null, editorAccess: false },
     { key: 'videos', label: 'Video', icon: null, editorAccess: false },
     { key: 'news', label: 'Lajme', icon: null, editorAccess: false },
     { key: 'documents', label: 'Dokumentet', icon: null, editorAccess: false },
@@ -278,6 +280,7 @@ const AdminPage: React.FC = () => {
         {activeTab === 'teamsplayers' && isAdmin && <AdminTeamsPlayers />}
         {activeTab === 'kombetarja' && isAdmin && <AdminKombetarja />}
         {activeTab === 'playoff' && isAdmin && <AdminPlayoff />}
+        {activeTab === 'kupaShorti' && isAdmin && <AdminKupaShorti />}
         {activeTab === 'normativeActs' && isAdmin && <AdminNormativeActs />}
         {activeTab === 'shorti' && isAdmin && <AdminShorti />}
         {activeTab === 'videos' && isAdmin && <AdminVideos />}

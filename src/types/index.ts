@@ -146,6 +146,8 @@ export interface AppSettings {
   contact: string;
   hiddenNavPaths?: string[];
   votingEnabled?: boolean;
+  /** Shorti i Kupës: 16 vende (ID skuadrash), çifti m = vendet 2m dhe 2m+1 */
+  kupaBracket?: { slots: (string | null)[] };
   suspensionRules?: {
     yellowThreshold: number;
     yellowSuspensionMatches: number;
